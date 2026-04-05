@@ -7,13 +7,7 @@ import stylesData from '../data/combatStyles.json';
 
 // --- TYPES ---
 interface Characteristics {
-  STR: number;
-  CON: number;
-  SIZ: number;
-  DEX: number;
-  INT: number;
-  POW: number;
-  CHA: number;
+  STR: number; CON: number; SIZ: number; DEX: number; INT: number; POW: number; CHA: number;
 }
 
 interface SkillSpend {
@@ -32,260 +26,210 @@ const standardSkillKeys = [
 const getProfSkillBase = (skillName: string, chars: Characteristics) => {
   const name = skillName.toLowerCase();
   if (name.includes('art')) return chars.POW + chars.CHA;
-  if (name.includes('commerce')) return chars.INT + chars.CHA;
-  if (name.includes('courtesy')) return chars.INT + chars.CHA;
+  if (name.includes('commerce') || name.includes('courtesy') || name.includes('language')) return chars.INT + chars.CHA;
   if (name.includes('craft')) return chars.DEX + chars.INT;
-  if (name.includes('language')) return chars.INT + chars.CHA;
-  if (name.includes('streetwise')) return chars.POW + chars.CHA;
-  if (name.includes('lore')) return chars.INT * 2;
-  if (name.includes('navigation')) return chars.INT + chars.POW;
-  if (name.includes('survival')) return chars.CON + chars.POW;
-  if (name.includes('track')) return chars.INT + chars.CON;
-  if (name.includes('binding')) return chars.POW + chars.CHA;
+  if (name.includes('streetwise') || name.includes('binding')) return chars.POW + chars.CHA;
+  if (name.includes('lore') || name.includes('locale')) return chars.INT * 2;
+  if (name.includes('navigation') || name.includes('healing')) return chars.INT + chars.POW;
+  if (name.includes('survival') || name.includes('track')) return chars.CON + chars.POW;
   if (name.includes('trance')) return chars.POW * 2;
-  if (name.includes('healing')) return chars.INT + chars.POW;
   return chars.INT * 2; 
 };
 
 export default function CharacterBuilder() {
+  // --- STATE ---
   const [characteristics, setCharacteristics] = useState<Characteristics>({ STR: 10, CON: 10, SIZ: 10, DEX: 10, INT: 10, POW: 10, CHA: 10 });
   const [selectedCulture, setSelectedCulture] = useState("");
   const [selectedCareer, setSelectedCareer] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("");
   const [socialClass, setSocialClass] = useState({ name: "Freeman", multi: 1 });
-  
-  const [passions, setPassions] = useState([{ id: 1, target: "Melniboné" }]);
+  const [passions, setPassions] = useState([{ id: 1, target: "Melniboné", val: 0 }]);
   const [dedicatedMPs, setDedicatedMPs] = useState(0);
   const [pactName, setPactName] = useState("");
   const [spells, setSpells] = useState<string[]>([]);
-  const [gifts, setGifts] = useState<string[]>([]);
   const [inventory, setInventory] = useState("");
-  
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
 
-  useEffect(() => {
-    const cult = (culturesData as any[]).find(c => c.id === selectedCulture);
-    if (cult?.forcedCareer) setSelectedCareer(cult.forcedCareer);
-  }, [selectedCulture]);
-
-  const rollSocialClass = () => {
-    const roll = Math.floor(Math.random() * 100) + 1;
-    const isM = selectedCulture === "melnibone";
-    let res = roll <= 10 ? {name:"Outlaw", m:0.25} : roll <= 50 ? {name:"Poor", m:0.5} : roll <= 75 ? {name:"Freeman", m:1} : roll <= 95 ? {name:"Gentry", m:3} : {name:"Aristocracy", m:5};
-    if (isM) res = roll <= 80 ? {name:"Gentry", m:5} : roll <= 98 ? {name:"Aristocracy", m:10} : {name:"Ruling", m:20};
-    setSocialClass({ name: res.name, multi: res.m });
-  };
-
-  const handleStatChange = (s: keyof Characteristics, v: string) => {
-    let val = parseInt(v) || 0;
-    const min = (s === "INT" || s === "SIZ") ? 8 : 3;
-    setCharacteristics(prev => ({ ...prev, [s]: Math.min(18, Math.max(min, val)) }));
-  };
-
-  const pointsSpent = Object.values(characteristics).reduce((a, b) => a + b, 0);
-  const hpB = Math.ceil((characteristics.CON + characteristics.SIZ) / 5);
-  const maxMPs = characteristics.POW - dedicatedMPs;
-  const passionBase = characteristics.POW + characteristics.CHA;
-
+  // --- DERIVED DATA ---
   const activeCulture = (culturesData as any[]).find(c => c.id === selectedCulture);
   const activeCareer = (careersData as any[]).find(c => c.id === selectedCareer);
   const activeStyle = (stylesData as any[]).find(s => s.id === selectedStyle);
-  
+
   const cultureProfs: string[] = activeCulture?.professionalSkills || [];
   const careerProfs: string[] = activeCareer?.professionalSkills || [];
   const careerStandards: string[] = activeCareer?.standardSkills || [];
   const availableProfSkills = [...new Set([...cultureProfs, ...careerProfs])].sort();
 
+  // --- POOL CALCULATIONS ---
+  const charPoints = Object.values(characteristics).reduce((a, b) => a + b, 0);
+  const cultureSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.culture || 0), 0);
+  const careerSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.career || 0), 0);
+  const bonusSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.bonus || 0), 0);
+
   const getStandardBase = (s: string) => {
     const c = characteristics;
-    if (s === "Customs" || s === "NativeTongue") return (c.INT * 2) + (selectedCulture ? 40 : 0);
-    if (["Athletics", "Unarmed"].includes(s)) return c.STR + c.DEX;
-    if (["Boating", "Swim"].includes(s)) return c.STR + c.CON;
-    if (s === "Brawn") return c.STR + c.SIZ;
-    if (["Conceal", "Drive", "Ride"].includes(s)) return c.DEX + c.POW;
-    if (["Dance", "Deceit"].includes(s)) return c.INT + c.CHA;
-    if (s === "Endurance") return c.CON * 2;
-    if (s === "Evade") return c.DEX * 2;
-    if (s === "FirstAid") return c.INT + c.DEX;
-    if (s === "Influence") return c.CHA * 2;
-    if (["Insight", "Perception"].includes(s)) return c.INT + c.POW;
-    if (s === "Locale") return c.INT * 2;
-    if (s === "Sing") return c.CHA + c.POW;
-    if (s === "Stealth") return c.DEX + c.INT;
-    if (s === "Willpower") return c.POW * 2;
-    return 0;
+    let base = 0;
+    if (s === "Customs" || s === "NativeTongue") base = (c.INT * 2) + (selectedCulture ? 40 : 0);
+    else if (["Athletics", "Unarmed"].includes(s)) base = c.STR + c.DEX;
+    else if (["Boating", "Swim"].includes(s)) base = c.STR + c.CON;
+    else if (s === "Brawn") base = c.STR + c.SIZ;
+    else if (["Conceal", "Drive", "Ride"].includes(s)) base = c.DEX + c.POW;
+    else if (["Dance", "Deceit"].includes(s)) base = c.INT + c.CHA;
+    else if (s === "Endurance") base = c.CON * 2;
+    else if (s === "Evade") base = c.DEX * 2;
+    else if (s === "FirstAid") base = c.INT + c.DEX;
+    else if (s === "Influence") base = c.CHA * 2;
+    else if (["Insight", "Perception"].includes(s)) base = c.INT + c.POW;
+    else if (s === "Locale") base = c.INT * 2;
+    else if (s === "Sing") base = c.CHA + c.POW;
+    else if (s === "Stealth") base = c.DEX + c.INT;
+    else if (s === "Willpower") base = c.POW * 2;
+    return base;
   };
 
-  const highSpeechTotal = (characteristics.INT + characteristics.CHA) + (skillSpends["Language (High Speech)"]?.culture || 0) + (skillSpends["Language (High Speech)"]?.career || 0) + (skillSpends["Language (High Speech)"]?.bonus || 0);
+  const highSpeechTotal = (characteristics.INT + characteristics.CHA) + 
+    (skillSpends["Language (High Speech)"]?.culture || 0) + 
+    (skillSpends["Language (High Speech)"]?.career || 0) + 
+    (skillSpends["Language (High Speech)"]?.bonus || 0);
 
-  const handleSkillSpend = (skill: string, pool: keyof SkillSpend, value: string) => {
-    setSkillSpends(prev => ({ 
-        ...prev, 
-        [skill]: { 
-            ...(prev[skill] || { culture: 0, career: 0, bonus: 0 }), 
-            [pool]: parseInt(value) 
-        } 
+  // --- HANDLERS ---
+  const handleSkillChange = (skill: string, pool: keyof SkillSpend, value: number) => {
+    setSkillSpends(prev => ({
+      ...prev,
+      [skill]: { ...(prev[skill] || { culture: 0, career: 0, bonus: 0 }), [pool]: value }
     }));
   };
 
   const SkillRow = ({ name, base, type }: { name: string, base: number, type: string }) => {
-    const spends = skillSpends[name] || { culture: 0, career: 0, bonus: 0 };
-    const total = base + (spends.culture || 0) + (spends.career || 0) + (spends.bonus || 0);
+    const s = skillSpends[name] || { culture: 0, career: 0, bonus: 0 };
+    const total = base + s.culture + s.career + s.bonus;
     const isMagic = ["Summoning Ritual", "Command", "Rune Casting"].includes(name);
     const overCap = isMagic && total > highSpeechTotal;
 
-    const canC = type === "standard" || cultureProfs.includes(name) || type === "style";
-    const canJ = careerStandards.includes(name) || careerProfs.includes(name) || type === "style";
+    const canCulture = type === "standard" || cultureProfs.includes(name) || type === "style";
+    const canCareer = careerStandards.includes(name) || careerProfs.includes(name) || type === "style";
 
     return (
       <tr className={`border-b text-[10px] ${overCap ? 'bg-red-50' : ''}`}>
         <td className={`p-1 font-bold ${overCap ? 'text-red-600' : ''}`}>{name}</td>
-        <td className="text-center text-gray-500">{base}</td>
-        {(['culture', 'career', 'bonus'] as const).map(p => {
-          const isActive = p === 'culture' ? canC : p === 'career' ? canJ : true;
-          const color = p === 'culture' ? 'blue' : p === 'career' ? 'green' : 'purple';
-          return (
-            <td key={p} className={`text-center bg-${color}-50`}>
-              <select disabled={!isActive} className={`border text-[9px] ${!isActive ? 'opacity-20' : ''}`} value={spends[p]} onChange={e => handleSkillSpend(name, p, e.target.value)}>
-                {[0, 5, 10, 15].map(v => <option key={v} value={v}>{v || '-'}</option>)}
-              </select>
-            </td>
-          );
-        })}
+        <td className="text-center text-gray-400">{base}</td>
+        
+        {/* Culture Pool (5-15) */}
+        <td className="bg-blue-50">
+          <input type="number" step="5" min="0" max="15" disabled={!canCulture}
+            className={`w-8 text-center bg-transparent ${!canCulture ? 'opacity-10' : ''}`}
+            value={s.culture} onChange={e => handleSkillChange(name, 'culture', parseInt(e.target.value) || 0)} />
+        </td>
+
+        {/* Career Pool (5-15) */}
+        <td className="bg-green-50">
+          <input type="number" step="5" min="0" max="15" disabled={!canCareer}
+            className={`w-8 text-center bg-transparent ${!canCareer ? 'opacity-10' : ''}`}
+            value={s.career} onChange={e => handleSkillChange(name, 'career', parseInt(e.target.value) || 0)} />
+        </td>
+
+        {/* Bonus Pool (Open) */}
+        <td className="bg-purple-50">
+          <input type="number" step="5" className="w-8 text-center bg-transparent"
+            value={s.bonus} onChange={e => handleSkillChange(name, 'bonus', parseInt(e.target.value) || 0)} />
+        </td>
+
         <td className={`text-center font-bold ${overCap ? 'text-red-700 underline' : ''}`}>{total}%</td>
       </tr>
     );
   };
 
   return (
-    <main className="min-h-screen bg-[#f4e4bc] p-4 font-serif text-sm text-black">
-      <div className="max-w-7xl mx-auto bg-white p-6 border-4 border-black shadow-2xl">
-        <h1 className="text-3xl font-bold text-center uppercase tracking-tighter border-b-2 border-black mb-6">Elric Character Creator (Mythras)</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <section className="space-y-4">
-            <div className="border p-2 bg-gray-50">
-              <h2 className="font-bold border-b mb-2">1. Identity</h2>
-              <select className="w-full mb-2 border p-1" value={selectedCulture} onChange={e => setSelectedCulture(e.target.value)}>
-                <option value="">Select Kingdom</option>
-                {(culturesData as any[]).map(c => <option key={c.id} value={c.id}>{c.kingdom}</option>)}
-              </select>
-              <select className="w-full border p-1" value={selectedCareer} onChange={e => setSelectedCareer(e.target.value)} disabled={!!activeCulture?.forcedCareer}>
-                <option value="">Select Career</option>
-                {(careersData as any[]).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
+    <main className="min-h-screen bg-[#ece0c8] p-4 font-serif text-black">
+      <div className="max-w-7xl mx-auto bg-white border-4 border-black shadow-2xl p-6">
+        <header className="border-b-4 border-black mb-6 pb-2 flex justify-between items-end">
+          <h1 className="text-4xl font-black uppercase tracking-tighter italic">Elric: Mythras</h1>
+          <div className="text-right text-xs font-bold uppercase">
+            Character Generation System v1.0
+          </div>
+        </header>
 
-            <div className="border p-2 bg-blue-50 border-blue-200">
-              <h2 className="font-bold border-b border-blue-300 mb-2 text-blue-900">2. Pact & Magic</h2>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-bold">Max Magic Points:</span>
-                <span className="text-sm font-bold text-blue-700">{maxMPs}</span>
-              </div>
-              <input placeholder="Pact Name (e.g. Arioch)" className="w-full text-[10px] p-1 border mb-1" value={pactName} onChange={e => setPactName(e.target.value)} />
-              <div className="flex items-center gap-2 mb-2">
-                <label className="text-[9px] font-bold">Dedicated MP:</label>
-                <input type="number" className="w-10 border text-center text-xs" value={dedicatedMPs} onChange={e => setDedicatedMPs(parseInt(e.target.value) || 0)} />
-              </div>
-              
-              <p className="text-[9px] font-bold text-blue-800 mb-1">Gifts & Compulsions:</p>
-              {gifts.map((g, idx) => (
-                <input key={idx} className="w-full text-[9px] border mb-0.5 p-0.5" value={g} onChange={e => {
-                  const newG = [...gifts]; newG[idx] = e.target.value; setGifts(newG);
-                }} />
-              ))}
-              <button onClick={() => setGifts([...gifts, ""])} className="text-[8px] bg-blue-800 text-white px-2 py-0.5">+ Add Gift</button>
-            </div>
-
-            <div className="border p-2 bg-red-50 border-red-200">
-              <h2 className="font-bold border-b border-red-300 mb-2 text-red-900">3. Passions ({passionBase}%)</h2>
-              {passions.map((p, idx) => (
-                <div key={p.id} className="flex gap-1 mb-1">
-                  <input className="text-[9px] border flex-1 p-0.5" placeholder="Hate Pan Tang..." value={p.target} onChange={e => {
-                    const newP = [...passions]; newP[idx].target = e.target.value; setPassions(newP);
-                  }} />
-                  <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="text-red-500 font-bold px-1">×</button>
-                </div>
-              ))}
-              <button onClick={() => setPassions([...passions, {id: Date.now(), target:""}])} className="text-[8px] bg-red-800 text-white px-2 py-0.5">+ Add Passion</button>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="border p-2">
-              <h2 className="font-bold border-b mb-2">4. Characteristics ({pointsSpent}/80)</h2>
-              <div className="grid grid-cols-2 gap-x-2">
-                {(Object.keys(characteristics) as (keyof Characteristics)[]).map(s => (
-                  <div key={s} className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-bold">{s}</label>
-                    <input type="number" className="w-8 border text-center text-xs" value={characteristics[s]} onChange={e => handleStatChange(s, e.target.value)}/>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* STEP 1 & 2: STATS */}
+          <section className="space-y-6">
+            <div className="border-2 border-black p-3">
+              <h2 className="font-bold border-b-2 border-black mb-3 uppercase text-xs flex justify-between">
+                Step 3: Characteristics <span className={charPoints > 80 ? 'text-red-600' : ''}>{charPoints}/80</span>
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(characteristics) as (keyof Characteristics)[]).map(key => (
+                  <div key={key} className="flex justify-between items-center border-b border-dotted border-gray-400">
+                    <span className="font-bold text-xs">{key}</span>
+                    <input type="number" className="w-10 text-center font-bold" value={characteristics[key]} 
+                      onChange={e => setCharacteristics({...characteristics, [key]: parseInt(e.target.value) || 0})} />
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="border p-2 bg-gray-50">
-              <h2 className="font-bold border-b mb-1 text-xs">Hit Locations</h2>
-              <table className="w-full text-center text-[10px] border">
-                <thead><tr className="bg-gray-200"><th>1d20</th><th>Loc</th><th>HP</th></tr></thead>
+            <div className="border-2 border-black p-3 bg-gray-100">
+              <h2 className="font-bold border-b-2 border-black mb-2 uppercase text-xs">Step 4: Attributes</h2>
+              <div className="text-[10px] space-y-1">
+                <p className="flex justify-between"><span>Action Points:</span> <strong>{characteristics.DEX + characteristics.INT <= 24 ? 2 : 3}</strong></p>
+                <p className="flex justify-between"><span>Hit Points (Head):</span> <strong>{Math.ceil((characteristics.CON + characteristics.SIZ) / 5)}</strong></p>
+                <p className="flex justify-between text-blue-800"><span>Tenacity (POW):</span> <strong>{characteristics.POW}</strong></p>
+                <p className="flex justify-between"><span>Magic Points:</span> <strong>{characteristics.POW - dedicatedMPs}</strong></p>
+              </div>
+            </div>
+          </section>
+
+          {/* STEP 3 & 4: CULTURE & CAREER */}
+          <section className="space-y-6">
+            <div className="border-2 border-black p-3 bg-blue-50">
+              <h2 className="font-bold border-b-2 border-black mb-2 uppercase text-xs">Step 6: Homeland</h2>
+              <select className="w-full text-xs border p-1 mb-2" value={selectedCulture} onChange={e => setSelectedCulture(e.target.value)}>
+                <option value="">Choose Kingdom...</option>
+                {(culturesData as any[]).map(c => <option key={c.id} value={c.id}>{c.kingdom}</option>)}
+              </select>
+              <p className="text-[9px] italic">{activeCulture?.description}</p>
+            </div>
+
+            <div className="border-2 border-black p-3 bg-green-50">
+              <h2 className="font-bold border-b-2 border-black mb-2 uppercase text-xs">Step 7: Career</h2>
+              <select className="w-full text-xs border p-1" value={selectedCareer} onChange={e => setSelectedCareer(e.target.value)}>
+                <option value="">Choose Career...</option>
+                {(careersData as any[]).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            
+            <div className="border-2 border-black p-3 bg-purple-50">
+              <h2 className="font-bold border-b-2 border-black mb-2 uppercase text-xs">Step 10: Passions</h2>
+              {passions.map((p, idx) => (
+                <div key={p.id} className="flex gap-1 mb-1">
+                  <input className="text-[10px] border flex-1 p-1" placeholder="Hate Melniboné..." value={p.target} 
+                    onChange={e => { const n = [...passions]; n[idx].target = e.target.value; setPassions(n); }} />
+                  <span className="text-[10px] font-bold p-1 bg-white border">{characteristics.POW + characteristics.CHA}%</span>
+                </div>
+              ))}
+              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-2 uppercase">Add Passion</button>
+            </div>
+          </section>
+
+          {/* SKILLS TABLE (COLUMNS 3 & 4) */}
+          <section className="md:col-span-2 border-2 border-black overflow-hidden flex flex-col">
+            <div className="bg-black text-white p-2 flex justify-around text-[10px] font-bold uppercase">
+              <div className={cultureSpent > 100 ? 'text-red-400' : ''}>Culture: {cultureSpent}/100</div>
+              <div className={careerSpent > 100 ? 'text-red-400' : ''}>Career: {careerSpent}/100</div>
+              <div className={bonusSpent > 150 ? 'text-red-400' : ''}>Bonus: {bonusSpent}/150</div>
+            </div>
+            <div className="overflow-y-auto flex-1 p-2">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-[9px] uppercase border-b-2 border-black">
+                    <th className="text-left p-1">Skill</th><th>Base</th><th className="bg-blue-100">Cult</th><th className="bg-green-100">Car</th><th className="bg-purple-100">Bon</th><th>Total</th>
+                  </tr>
+                </thead>
                 <tbody>
-                {[{r:"19-20", l:"Head", h:hpB}, {r:"10-12", l:"Chest", h:hpB+2}, {r:"7-9", l:"Abdo", h:hpB+1}, {r:"13-18", l:"Arms", h:hpB}, {r:"1-6", l:"Legs", h:hpB}].map(row => (
-                  <tr key={row.l} className="border-b"><td>{row.r}</td><td className="text-left font-bold">{row.l}</td><td>{row.h}</td></tr>
-                ))}
+                  {standardSkillKeys.map(k => <SkillRow key={k} name={k} base={getStandardBase(k)} type="standard" />)}
+                  <tr className="bg-gray-200 text-[9px] font-bold uppercase text-center"><td colSpan={6}>Professional Skills</td></tr>
+                  {availableProfSkills.map(k => <SkillRow key={k} name={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
                 </tbody>
               </table>
-            </div>
-
-            <div className="border p-2 bg-yellow-50">
-              <div className="flex justify-between items-center border-b mb-1">
-                <h2 className="font-bold text-xs">5. Social Class</h2>
-                <button onClick={rollSocialClass} className="text-[8px] bg-black text-white px-1">Roll</button>
-              </div>
-              <p className="text-[10px]"><strong>{socialClass.name}</strong> ({socialClass.multi * (activeCulture?.startingMoney.includes('150') ? 600 : 300)} SP)</p>
-            </div>
-          </section>
-
-          <section className="col-span-1 border p-2 max-h-[750px] overflow-y-auto">
-            <h2 className="font-bold border-b mb-2">6. Skills & Styles</h2>
-            <select className="w-full border p-1 text-[9px] mb-2" value={selectedStyle} onChange={e => setSelectedStyle(e.target.value)}>
-              <option value="">-- Choose Combat Style --</option>
-              {(stylesData as any[]).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <table className="w-full">
-              <thead className="bg-black text-white text-[9px]">
-                <tr><th className="text-left p-1">Skill</th><th>B</th><th>C</th><th>J</th><th>B</th><th>F</th></tr>
-              </thead>
-              <tbody>
-                {standardSkillKeys.map(s => <SkillRow key={s} name={s} base={getStandardBase(s)} type="standard" />)}
-                {activeStyle && <SkillRow name={`Style: ${activeStyle.name}`} base={characteristics.STR + characteristics.DEX} type="style" />}
-                {pactName && <SkillRow name={`Pact (${pactName})`} base={characteristics.CHA + dedicatedMPs} type="prof" />}
-                <tr className="bg-gray-200 font-bold text-[9px] text-center border-y border-black">
-                    <td colSpan={6}>Professional Skills</td>
-                </tr>
-                {availableProfSkills.map(s => <SkillRow key={s} name={s} base={getProfSkillBase(s, characteristics)} type="prof" />)}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="space-y-4">
-            <div className="border p-2 bg-purple-50 border-purple-200">
-              <h2 className="font-bold border-b border-purple-300 mb-2 text-purple-900">7. Grimoire / Spells</h2>
-              {spells.map((s, idx) => (
-                <input key={idx} className="w-full text-[9px] border mb-0.5 p-0.5" placeholder="Spell/Rune name..." value={s} onChange={e => {
-                  const newS = [...spells]; newS[idx] = e.target.value; setSpells(newS);
-                }} />
-              ))}
-              <button onClick={() => setSpells([...spells, ""])} className="text-[8px] bg-purple-800 text-white px-2 py-0.5">+ Add Spell</button>
-            </div>
-
-            <div className="border p-2 bg-gray-50 flex-1 flex flex-col">
-              <h2 className="font-bold border-b mb-2">8. Inventory & Gear</h2>
-              <textarea 
-                className="w-full flex-1 text-[10px] p-1 border min-h-[400px]" 
-                placeholder="List your weapons, armor, and gear here..."
-                value={inventory}
-                onChange={e => setInventory(e.target.value)}
-              />
             </div>
           </section>
         </div>
