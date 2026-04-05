@@ -5,7 +5,7 @@ import culturesData from '../data/cultures.json';
 import careersData from '../data/careers.json';
 import stylesData from '../data/combatStyles.json';
 
-// --- TYPES FOR TYPESCRIPT ---
+// --- DEFINING TYPES FOR TYPESCRIPT ---
 interface Characteristics {
   STR: number;
   CON: number;
@@ -29,6 +29,7 @@ const standardSkillKeys = [
   "Stealth", "Swim", "Unarmed", "Willpower"
 ];
 
+// We explicitly tell TypeScript that skillName is a string and chars follows our interface
 const getProfSkillBase = (skillName: string, chars: Characteristics) => {
   const name = skillName.toLowerCase();
   if (name.includes('art')) return chars.POW + chars.CHA;
@@ -53,18 +54,16 @@ export default function CharacterBuilder() {
   const [selectedCareer, setSelectedCareer] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("");
   const [socialClass, setSocialClass] = useState({ name: "Freeman", multi: 1 });
-  
   const [passions, setPassions] = useState([{ id: 1, target: "Melniboné" }]);
   const [dedicatedMPs, setDedicatedMPs] = useState(0);
   const [pactName, setPactName] = useState("");
   const [spells, setSpells] = useState<string[]>([]);
   const [gifts, setGifts] = useState<string[]>([]);
   const [inventory, setInventory] = useState("");
-  
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
 
   useEffect(() => {
-    const cult = culturesData.find(c => c.id === selectedCulture);
+    const cult = (culturesData as any[]).find(c => c.id === selectedCulture);
     if (cult?.forcedCareer) setSelectedCareer(cult.forcedCareer);
   }, [selectedCulture]);
 
@@ -87,9 +86,9 @@ export default function CharacterBuilder() {
   const maxMPs = characteristics.POW - dedicatedMPs;
   const passionBase = characteristics.POW + characteristics.CHA;
 
-  const activeCulture = culturesData.find(c => c.id === selectedCulture);
-  const activeCareer = careersData.find(c => c.id === selectedCareer);
-  const activeStyle = stylesData.find(s => s.id === selectedStyle);
+  const activeCulture = (culturesData as any[]).find(c => c.id === selectedCulture);
+  const activeCareer = (careersData as any[]).find(c => c.id === selectedCareer);
+  const activeStyle = (stylesData as any[]).find(s => s.id === selectedStyle);
   
   const cultureProfs: string[] = activeCulture?.professionalSkills || [];
   const careerProfs: string[] = activeCareer?.professionalSkills || [];
@@ -168,11 +167,11 @@ export default function CharacterBuilder() {
               <h2 className="font-bold border-b mb-2">1. Identity</h2>
               <select className="w-full mb-2 border p-1" value={selectedCulture} onChange={e => setSelectedCulture(e.target.value)}>
                 <option value="">Select Kingdom</option>
-                {culturesData.map(c => <option key={c.id} value={c.id}>{c.kingdom}</option>)}
+                {(culturesData as any[]).map(c => <option key={c.id} value={c.id}>{c.kingdom}</option>)}
               </select>
               <select className="w-full border p-1" value={selectedCareer} onChange={e => setSelectedCareer(e.target.value)} disabled={!!activeCulture?.forcedCareer}>
                 <option value="">Select Career</option>
-                {careersData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {(careersData as any[]).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
@@ -249,7 +248,7 @@ export default function CharacterBuilder() {
             <h2 className="font-bold border-b mb-2">6. Skills & Styles</h2>
             <select className="w-full border p-1 text-[9px] mb-2" value={selectedStyle} onChange={e => setSelectedStyle(e.target.value)}>
               <option value="">-- Choose Combat Style --</option>
-              {stylesData.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {(stylesData as any[]).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             <table className="w-full">
               <thead className="bg-black text-white text-[9px]">
