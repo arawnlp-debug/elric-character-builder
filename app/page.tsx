@@ -5,7 +5,7 @@ import culturesData from '../data/cultures.json';
 import careersData from '../data/careers.json';
 import stylesData from '../data/combatStyles.json';
 
-// --- DEFINING TYPES FOR TYPESCRIPT ---
+// --- TYPES ---
 interface Characteristics {
   STR: number;
   CON: number;
@@ -29,7 +29,6 @@ const standardSkillKeys = [
   "Stealth", "Swim", "Unarmed", "Willpower"
 ];
 
-// We explicitly tell TypeScript that skillName is a string and chars follows our interface
 const getProfSkillBase = (skillName: string, chars: Characteristics) => {
   const name = skillName.toLowerCase();
   if (name.includes('art')) return chars.POW + chars.CHA;
@@ -54,12 +53,14 @@ export default function CharacterBuilder() {
   const [selectedCareer, setSelectedCareer] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("");
   const [socialClass, setSocialClass] = useState({ name: "Freeman", multi: 1 });
+  
   const [passions, setPassions] = useState([{ id: 1, target: "Melniboné" }]);
   const [dedicatedMPs, setDedicatedMPs] = useState(0);
   const [pactName, setPactName] = useState("");
   const [spells, setSpells] = useState<string[]>([]);
   const [gifts, setGifts] = useState<string[]>([]);
   const [inventory, setInventory] = useState("");
+  
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
 
   useEffect(() => {
@@ -258,7 +259,9 @@ export default function CharacterBuilder() {
                 {standardSkillKeys.map(s => <SkillRow key={s} name={s} base={getStandardBase(s)} type="standard" />)}
                 {activeStyle && <SkillRow name={`Style: ${activeStyle.name}`} base={characteristics.STR + characteristics.DEX} type="style" />}
                 {pactName && <SkillRow name={`Pact (${pactName})`} base={characteristics.CHA + dedicatedMPs} type="prof" />}
-                <tr className="bg-gray-200 font-bold text-[9px] text-center border-y border-black"><td colSpan="6">Professional Skills</td></tr>
+                <tr className="bg-gray-200 font-bold text-[9px] text-center border-y border-black">
+                    <td colSpan={6}>Professional Skills</td>
+                </tr>
                 {availableProfSkills.map(s => <SkillRow key={s} name={s} base={getProfSkillBase(s, characteristics)} type="prof" />)}
               </tbody>
             </table>
