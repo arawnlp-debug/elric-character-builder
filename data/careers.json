@@ -1,0 +1,65 @@
+[
+  {
+    "id": "artist",
+    "name": "Artist",
+    "allowedCultures": ["Civilised", "Melnibonéan"],
+    "standardSkills": ["Conceal", "Customs", "Influence", "Insight", "Locale", "Perception", "Unarmed"],
+    "professionalSkills": ["Art", "Commerce", "Courtesy", "Craft", "Language", "Streetwise"]
+  },
+  {
+    "id": "beggar",
+    "name": "Beggar",
+    "allowedCultures": ["Civilised"],
+    "standardSkills": ["Deceit", "Evade", "Influence", "Insight", "Locale", "Perception"],
+    "professionalSkills": ["Acting", "Commerce", "Language", "Streetwise"]
+  },
+  {
+    "id": "dreamthief",
+    "name": "Dreamthief",
+    "allowedCultures": ["Civilised", "Barbarian", "Nomad", "Melnibonéan"],
+    "standardSkills": ["Dance", "Influence", "Insight", "Perception", "Sing", "Willpower"],
+    "professionalSkills": ["Art", "Commerce", "Courtesy", "Language", "Lore (Million Spheres)", "Musicianship", "Seduction", "Dreamtheft"]
+  },
+  {
+    "id": "engineer",
+    "name": "Engineer (Maidahk)",
+    "allowedCultures": ["Civilised"],
+    "standardSkills": ["Brawn", "Drive", "Endurance", "FirstAid", "Locale", "Perception"],
+    "professionalSkills": ["Commerce", "Craft", "Engineering", "Lore (Physics)", "Lore (Technical Speciality)", "Mechanisms", "Survival"]
+  },
+  {
+    "id": "guerrilla",
+    "name": "Guerrilla / Resistance Fighter",
+    "allowedCultures": ["Civilised", "Barbarian", "Nomad", "Primitive"],
+    "standardSkills": ["Athletics", "Brawn", "Conceal", "Endurance", "Locale", "Stealth"],
+    "professionalSkills": ["Craft", "Disguise", "Lore (Strategy and Tactics)", "Mechanisms", "Navigation", "Survival", "Track"]
+  },
+  {
+    "id": "scrutineer",
+    "name": "Scrutineer",
+    "allowedCultures": ["Civilised"],
+    "standardSkills": ["FirstAid", "Endurance", "Influence", "Insight", "Locale", "Perception", "Willpower"],
+    "professionalSkills": ["Language (High Speech)", "Language", "Literacy ('pande)", "Lore (Stargazing)", "Lore (Elithior)", "Lore (Mathematics)", "Rune Casting"]
+  },
+  {
+    "id": "shaman",
+    "name": "Shaman",
+    "allowedCultures": ["Barbarian", "Nomad", "Primitive", "Melnibonéan"],
+    "standardSkills": ["Customs", "Dance", "Deceit", "Influence", "Insight", "Locale", "Willpower"],
+    "professionalSkills": ["Binding", "Healing", "Lore", "Oratory", "Trance"]
+  },
+  {
+    "id": "sorcerer",
+    "name": "Sorcerer",
+    "allowedCultures": ["Civilised", "Melnibonéan", "Barbarian", "Nomad"],
+    "standardSkills": ["Customs", "Deceit", "Influence", "Insight", "Locale", "Perception", "Willpower"],
+    "professionalSkills": ["Language (High Speech)", "Literacy", "Command", "Summoning Ritual", "Rune Casting"]
+  },
+  {
+    "id": "warrior_priest",
+    "name": "Warrior-priest",
+    "allowedCultures": ["Civilised", "Barbarian", "Nomad", "Melnibonéan", "Primitive"],
+    "standardSkills": ["Athletics", "Brawn", "Endurance", "Evade", "Unarmed"],
+    "professionalSkills": ["Craft (Torture)", "Language (High Speech)", "Lore (Chaos)", "Lore (Strategy and Tactics)", "Lore (Military History)", "Oratory", "Survival"]
+  }
+]
