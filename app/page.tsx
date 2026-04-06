@@ -91,7 +91,7 @@ export default function CharacterBuilder() {
   const [passions, setPassions] = useState([{ id: 1, target: "Melniboné", val: 0 }]);
   const [pacts, setPacts] = useState<Pact[]>([{ id: 1, entity: "", dedicatedPow: 0, gifts: "", compulsions: "" }]);
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
-  const [skillSpecs, setSkillSpecs] = useState<Record<string, string>>({}); // Tracks inline specifications
+  const [skillSpecs, setSkillSpecs] = useState<Record<string, string>>({}); 
   
   // Custom Skills
   const [customSkills, setCustomSkills] = useState<string[]>([]);
@@ -234,6 +234,33 @@ export default function CharacterBuilder() {
     });
   };
 
+  // --- RANDOMIZE SOCIAL CLASS & MONEY ---
+  const handleRollSocialClass = () => {
+    const roll = Math.floor(Math.random() * 100) + 1;
+    let newClass = "Freeman";
+    let newMoney = 0;
+
+    if (roll <= 15) {
+      newClass = "Slave / Outcast";
+      newMoney = 0;
+    } else if (roll <= 45) {
+      newClass = "Peasant / Poor";
+      newMoney = rollStat(2, 0) * 10;
+    } else if (roll <= 85) {
+      newClass = "Townsman / Freeman";
+      newMoney = rollStat(4, 0) * 75;
+    } else if (roll <= 98) {
+      newClass = "Minor Nobility / Merchant";
+      newMoney = rollStat(4, 0) * 500;
+    } else {
+      newClass = "High Nobility";
+      newMoney = rollStat(4, 0) * 1000;
+    }
+
+    setSocialClass(newClass);
+    setMoney(`${newMoney} SP`);
+  };
+
   // --- DEDICATED PRINT EXPORT LOGIC ---
   const handleExportPDF = () => {
     if (!printSheetRef.current) return;
@@ -290,7 +317,6 @@ export default function CharacterBuilder() {
     const canCulture = type === "standard" || cultureProfs.includes(skillName) || type === "style" || isCustom || isMagic;
     const canCareer = careerStandards.includes(skillName) || careerProfs.includes(skillName) || type === "style" || isCustom || isMagic;
 
-    // Determine if this exact skill needs an inline specification box
     const exactNeedsSpec = ["Art", "Craft", "Language", "Lore", "Combat Style", "Rune Casting", "Summoning Ritual", "Command", "Pact"].includes(skillName);
 
     return (
@@ -370,7 +396,10 @@ export default function CharacterBuilder() {
               </div>
 
               <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#eff6ff' }}>
-                <h2 className="font-bold border-b mb-1 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#1e3a8a' }}>Homeland & Class</h2>
+                <h2 className="font-bold border-b mb-1 uppercase text-[10px] flex justify-between font-black" style={{ borderColor: '#000000', color: '#1e3a8a' }}>
+                  Homeland & Class
+                  <button onClick={handleRollSocialClass} className="px-1 text-[8px]" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>🎲 Roll</button>
+                </h2>
                 <select className="w-full text-xs border p-1 mb-1" value={selectedCulture} onChange={e => setSelectedCulture(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>
                   <option value="">Choose Kingdom...</option>
                   {(culturesData as any[]).map(c => <option key={c.id} value={c.id}>{c.kingdom}</option>)}
