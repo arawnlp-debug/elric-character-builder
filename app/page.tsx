@@ -29,17 +29,19 @@ const standardSkillKeys = [
   "Stealth", "Swim", "Unarmed", "Willpower"
 ];
 
+// --- SMART BASE CALCULATOR ---
 const getProfSkillBase = (skillName: string, chars: Characteristics) => {
   const name = skillName.toLowerCase();
-  if (name.includes('art')) return chars.POW + chars.CHA;
+  if (name.includes('art') || name.includes('witch sight') || name.includes('devotion') || name.includes('pact')) return chars.POW + chars.CHA;
   if (name.includes('commerce') || name.includes('courtesy') || name.includes('language')) return chars.INT + chars.CHA;
   if (name.includes('craft')) return chars.DEX + chars.INT;
-  if (name.includes('streetwise') || name.includes('binding')) return chars.POW + chars.CHA;
-  if (name.includes('lore') || name.includes('locale')) return chars.INT * 2;
-  if (name.includes('navigation') || name.includes('healing')) return chars.INT + chars.POW;
+  if (name.includes('streetwise') || name.includes('binding') || name.includes('command')) return chars.POW + chars.CHA;
+  if (name.includes('lore') || name.includes('locale') || name.includes('literacy')) return chars.INT * 2;
+  if (name.includes('navigation') || name.includes('healing') || name.includes('rune casting') || name.includes('summoning')) return chars.INT + chars.POW;
   if (name.includes('survival') || name.includes('track')) return chars.CON + chars.POW;
-  if (name.includes('trance')) return chars.POW * 2;
-  return chars.INT * 2; 
+  if (name.includes('trance') || name.includes('dreamtheft')) return chars.POW * 2;
+  if (name.includes('combat style')) return chars.STR + chars.DEX;
+  return chars.INT * 2; // Fallback
 };
 
 const backgroundEvents = [
@@ -54,6 +56,19 @@ const backgroundEvents = [
   "Found an ancient coin from the time of the Dharzi."
 ];
 
+// --- DICE ROLLER LOGIC ---
+const rollD6 = () => Math.floor(Math.random() * 6) + 1;
+const rollStat = (dice: number, bonus: number) => {
+  const rollOnce = () => Array.from({length: dice}, rollD6).reduce((a, b) => a + b, 0) + bonus;
+  let firstRoll = rollOnce();
+  // House Rule: Reroll under 10 once, take better
+  if (firstRoll < 10) {
+    let secondRoll = rollOnce();
+    return Math.max(firstRoll, secondRoll);
+  }
+  return firstRoll;
+};
+
 export default function CharacterBuilder() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -64,26 +79,61 @@ export default function CharacterBuilder() {
   const [alignment, setAlignment] = useState("Neutral");
   const [age, setAge] = useState(18);
   const [background, setBackground] = useState("Roll for a Background Event...");
+  const [socialClass, setSocialClass] = useState("Freeman");
+  const [money, setMoney] = useState("4d6 x 75 SP");
+  const [connections, setConnections] = useState("");
+  const [equipment, setEquipment] = useState("");
   
   const [characteristics, setCharacteristics] = useState<Characteristics>({ STR: 10, CON: 10, SIZ: 10, DEX: 10, INT: 10, POW: 10, CHA: 10 });
   const [selectedCulture, setSelectedCulture] = useState("");
   const [selectedCareer, setSelectedCareer] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("");
-  const [socialClass, setSocialClass] = useState({ name: "Freeman", multi: 1 });
   const [passions, setPassions] = useState([{ id: 1, target: "Melniboné", val: 0 }]);
   const [dedicatedMPs, setDedicatedMPs] = useState(0);
-  const [pactName, setPactName] = useState("");
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
+  
+  // Custom Runes & Skills
+  const [rune1, setRune1] = useState("Rune of...");
+  const [rune2, setRune2] = useState("Rune of...");
+  const [rune3, setRune3] = useState("Rune of...");
+  const [customSkills, setCustomSkills] = useState<string[]>([]);
+  const [newSkillBase, setNewSkillBase] = useState("Lore");
+  const [newSkillSpec, setNewSkillSpec] = useState("");
+
+  // --- AGE CATEGORY & SCALING MATH ---
+  let ageCategory = "Adult";
+  let bonusPoolMax = 150;
+  let bonusSpendMax = 15;
+  
+  if (age < 17) { ageCategory = "Young"; bonusPoolMax = 100; bonusSpendMax = 10; }
+  else if (age < 28) { ageCategory = "Adult"; bonusPoolMax = 150; bonusSpendMax = 15; }
+  else if (age < 44) { ageCategory = "Middle Aged"; bonusPoolMax = 200; bonusSpendMax = 20; }
+  else if (age < 65) { ageCategory = "Senior"; bonusPoolMax = 250; bonusSpendMax = 25; }
+  else { ageCategory = "Old"; bonusPoolMax = 300; bonusSpendMax = 30; }
+
+  // Ageing rules text generator
+  const getAgeingText = () => {
+    if (age < 40) return null;
+    let rolls = [];
+    if (age >= 40) rolls.push("Early Middle (Easy)");
+    if (age >= 50) rolls.push("Middle (Standard)");
+    if (age >= 60) rolls.push("Late Middle (Hard)");
+    if (age >= 70) rolls.push("Old Age (Formidable)");
+    if (age >= 80) rolls.push("Advanced Old (Herculean)");
+    if (age >= 90) rolls.push("Dotage (Hopeless)");
+    return `Ageing Effects Apply! Roll END & WIL for: ${rolls.join(", ")}. Failure = -1d3 to a random characteristic.`;
+  };
 
   // --- DERIVED DATA & MATH ---
   const activeCulture = (culturesData as any[]).find(c => c.id === selectedCulture);
   const activeCareer = (careersData as any[]).find(c => c.id === selectedCareer);
-  const activeStyle = (stylesData as any[]).find(s => s.id === selectedStyle);
 
   const cultureProfs: string[] = activeCulture?.professionalSkills || [];
   const careerProfs: string[] = activeCareer?.professionalSkills || [];
   const careerStandards: string[] = activeCareer?.standardSkills || [];
+  
   const availableProfSkills = [...new Set([...cultureProfs, ...careerProfs])].sort();
+  const allProfSkills = [...new Set([...availableProfSkills, ...customSkills])].sort();
 
   const charPoints = Object.values(characteristics).reduce((a, b) => a + b, 0);
   const cultureSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.culture || 0), 0);
@@ -155,7 +205,38 @@ export default function CharacterBuilder() {
     }));
   };
 
-  // --- PDF EXPORT LOGIC ---
+  const handleAddCustomSkill = () => {
+    if (newSkillSpec.trim() === "") return;
+    const skillName = newSkillBase === "Custom Professional" ? newSkillSpec : `${newSkillBase} (${newSkillSpec})`;
+    if (!customSkills.includes(skillName)) {
+      setCustomSkills([...customSkills, skillName]);
+    }
+    setNewSkillSpec("");
+  };
+
+  const removeCustomSkill = (skillToRemove: string) => {
+    setCustomSkills(customSkills.filter(s => s !== skillToRemove));
+    setSkillSpends(prev => {
+      const updated = { ...prev };
+      delete updated[skillToRemove];
+      return updated;
+    });
+  };
+
+  // --- RANDOMIZE STATS ---
+  const handleRandomizeStats = () => {
+    setCharacteristics({
+      STR: rollStat(3, 0),
+      CON: rollStat(3, 0),
+      SIZ: rollStat(2, 6),
+      DEX: rollStat(3, 0),
+      INT: rollStat(2, 6),
+      POW: rollStat(3, 0),
+      CHA: rollStat(3, 0)
+    });
+  };
+
+  // --- BULLETPROOF PDF EXPORT ---
   const handleExportPDF = () => {
     if (!sheetRef.current) return;
     setIsExporting(true);
@@ -206,21 +287,27 @@ export default function CharacterBuilder() {
     const isMagic = ["Summoning Ritual", "Command", "Rune Casting"].includes(name);
     const overCap = isMagic && total > highSpeechTotal;
 
-    const canCulture = type === "standard" || cultureProfs.includes(name) || type === "style";
-    const canCareer = careerStandards.includes(name) || careerProfs.includes(name) || type === "style";
+    const isCustom = customSkills.includes(name);
+    const canCulture = type === "standard" || cultureProfs.includes(name) || type === "style" || type === "magic" || isCustom;
+    const canCareer = careerStandards.includes(name) || careerProfs.includes(name) || type === "style" || type === "magic" || isCustom;
 
     return (
-      <tr className="border-b text-[10px]" style={{ borderColor: '#d1d5db', backgroundColor: overCap ? '#fee2e2' : 'transparent' }}>
-        <td className="p-1 font-bold" style={{ color: overCap ? '#dc2626' : '#000000' }}>{name}</td>
+      <tr className="border-b text-[10px] relative group" style={{ borderColor: '#d1d5db', backgroundColor: overCap ? '#fee2e2' : 'transparent' }}>
+        <td className="p-1 font-bold flex justify-between items-center" style={{ color: overCap ? '#dc2626' : '#000000' }}>
+          <span>{name}</span>
+          {isCustom && !isExporting && (
+             <button onClick={() => removeCustomSkill(name)} className="text-red-500 font-bold px-1 ml-2 opacity-50 hover:opacity-100 hidden-on-print" title="Remove Hobby Skill">×</button>
+          )}
+        </td>
         <td className="text-center" style={{ color: '#6b7280' }}>{base}</td>
         <td className="text-center border-l" style={{ backgroundColor: '#eff6ff', borderColor: '#e5e7eb' }}>
-            <input type="number" step={5} className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCulture} value={s.culture} onChange={e => handleSkillChange(name, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+            <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCulture} value={s.culture} onChange={e => handleSkillChange(name, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
         </td>
         <td className="text-center border-l" style={{ backgroundColor: '#f0fdf4', borderColor: '#e5e7eb' }}>
-            <input type="number" step={5} className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCareer} value={s.career} onChange={e => handleSkillChange(name, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+            <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCareer} value={s.career} onChange={e => handleSkillChange(name, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
         </td>
         <td className="text-center border-l" style={{ backgroundColor: '#faf5ff', borderColor: '#e5e7eb' }}>
-            <input type="number" step={5} className="w-8 text-center bg-transparent focus:outline-none" value={s.bonus} onChange={e => handleSkillChange(name, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+            <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={s.bonus} onChange={e => handleSkillChange(name, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
         </td>
         <td className="text-center font-bold border-l" style={{ borderColor: '#e5e7eb', color: '#000000' }}>{total}%</td>
       </tr>
@@ -237,13 +324,12 @@ export default function CharacterBuilder() {
           onClick={handleExportPDF} 
           disabled={isExporting}
           className="px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors disabled:opacity-50 shadow-md border-2 border-transparent"
-          style={{ backgroundColor: '#000000', color: '#ffffff' }}
+          style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}
         >
           {isExporting ? 'Scribing PDF...' : 'Download PDF Sheet'}
         </button>
       </div>
 
-      {/* PDF SHEET CONTAINER - NO TAILWIND COLORS ALLOWED INSIDE HERE */}
       <div id="pdf-sheet-container" ref={sheetRef} className="max-w-7xl mx-auto border-4 p-6 relative overflow-hidden" style={{ borderColor: '#000000', backgroundColor: '#ffffff', boxShadow: isExporting ? 'none' : '0 0 50px rgba(0,0,0,0.2)' }}>
         
         {!isExporting && (
@@ -253,20 +339,21 @@ export default function CharacterBuilder() {
           />
         )}
 
-        <header className="border-b-4 mb-6 pb-2 flex justify-between items-end relative z-10" style={{ borderColor: '#000000' }}>
+        <header className="border-b-4 mb-4 pb-2 flex justify-between items-end relative z-10" style={{ borderColor: '#000000' }}>
           <h1 className="text-4xl font-black uppercase tracking-tighter italic drop-shadow-sm" style={{ color: '#000000' }}>Elric: Mythras</h1>
           <div className="text-right text-[10px] font-bold uppercase tracking-widest" style={{ color: '#7f1d1d' }}>
-            Young Kingdoms System v1.3
+            Young Kingdoms System - Ultimate 14-Step
           </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
           
+          {/* COLUMN 1: IDENTITY, CULTURE, CONNECTIONS & EQUIPMENT */}
           <section className="space-y-4">
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#ffffff' }}>
               <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#7f1d1d' }}>Step 1 & 5: Identity</h2>
               <input placeholder="Character Name" className="w-full text-xs border p-1 mb-1" value={name} onChange={e => setName(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }} />
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-1 mb-1">
                 <select className="text-xs border p-1" value={race} onChange={e => setRace(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>
                     <option>Human</option><option>Melnibonéan</option><option>Myyrrhn</option>
                 </select>
@@ -275,43 +362,74 @@ export default function CharacterBuilder() {
                   <input type="number" className="text-xs w-full bg-transparent outline-none font-bold" value={age} onChange={e => setAge(parseInt(e.target.value) || 18)} style={{ color: '#000000' }} />
                 </div>
               </div>
+              <div className="text-[8px] font-bold uppercase tracking-widest text-center" style={{ color: '#1e3a8a' }}>
+                Category: {ageCategory}
+              </div>
             </div>
 
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#fffbeb' }}>
               <h2 className="font-bold border-b mb-1 uppercase text-[10px] flex justify-between font-black" style={{ borderColor: '#000000', color: '#000000' }}>
-                Step 2: Background {!isExporting && <button onClick={() => setBackground(backgroundEvents[Math.floor(Math.random()*backgroundEvents.length)])} className="px-1 text-[8px]" style={{ backgroundColor: '#000000', color: '#ffffff' }}>Roll</button>}
+                Step 2: Background {!isExporting && <button onClick={() => setBackground(backgroundEvents[Math.floor(Math.random()*backgroundEvents.length)])} className="px-1 text-[8px] hidden-on-print" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>Roll</button>}
               </h2>
-              <p className="text-[10px] italic leading-tight min-h-[45px] flex items-center" style={{ color: '#000000' }}>{background}</p>
+              <p className="text-[10px] italic leading-tight min-h-[35px] flex items-center" style={{ color: '#000000' }}>{background}</p>
             </div>
 
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#eff6ff' }}>
-              <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#1e3a8a' }}>Step 6: Homeland</h2>
-              <select className="w-full text-xs border p-1" value={selectedCulture} onChange={e => setSelectedCulture(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>
+              <h2 className="font-bold border-b mb-1 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#1e3a8a' }}>Step 6 & 7: Homeland & Class</h2>
+              <select className="w-full text-xs border p-1 mb-1" value={selectedCulture} onChange={e => setSelectedCulture(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>
                 <option value="">Choose Kingdom...</option>
                 {(culturesData as any[]).map(c => <option key={c.id} value={c.id}>{c.kingdom}</option>)}
               </select>
-              {activeCulture && <p className="text-[9px] mt-1 leading-tight italic" style={{ opacity: 0.7, color: '#000000' }}>{activeCulture.description}</p>}
-            </div>
-            
-            <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#f0fdf4' }}>
-              <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#14532d' }}>Step 7: Career</h2>
+              <div className="grid grid-cols-2 gap-1 mb-1">
+                <input placeholder="Social Class..." className="text-[10px] border p-1 w-full" value={socialClass} onChange={e => setSocialClass(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }} />
+                <input placeholder="Starting SP..." className="text-[10px] border p-1 w-full font-bold" value={money} onChange={e => setMoney(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }} />
+              </div>
               <select className="w-full text-xs border p-1" value={selectedCareer} onChange={e => setSelectedCareer(e.target.value)} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>
                 <option value="">Choose Career...</option>
                 {(careersData as any[]).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+
+            <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#fdf4ff' }}>
+              <h2 className="font-bold border-b mb-1 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#701a75' }}>Step 11: Community & Family</h2>
+              <textarea 
+                className="w-full text-[9px] p-1 outline-none" 
+                rows={3} 
+                placeholder="List family members, allies, enemies, or mentors here..." 
+                value={connections} 
+                onChange={e => setConnections(e.target.value)} 
+                style={{ resize: 'none', backgroundColor: '#ffffff', borderColor: '#d1d5db', color: '#000000', borderWidth: '1px' }}
+              />
+            </div>
+
+            <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#f8fafc' }}>
+              <h2 className="font-bold border-b mb-1 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#0f172a' }}>Step 13: Inventory & Arms</h2>
+              <textarea 
+                className="w-full text-[9px] p-1 outline-none" 
+                rows={5} 
+                placeholder="Weapons, Armor, Grimoires, Potions, General Gear..." 
+                value={equipment} 
+                onChange={e => setEquipment(e.target.value)} 
+                style={{ resize: 'none', backgroundColor: '#ffffff', borderColor: '#d1d5db', color: '#000000', borderWidth: '1px' }}
+              />
+            </div>
           </section>
 
+          {/* COLUMN 2: STATS, ATTRIBUTES & LOCATIONS */}
           <section className="space-y-4">
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#ffffff' }}>
               <h2 className="font-bold border-b mb-2 uppercase text-[10px] flex justify-between font-black" style={{ borderColor: '#000000', color: '#000000' }}>
-                Step 3: Stats <span className="font-black" style={{ color: charPoints > 80 ? '#dc2626' : '#9ca3af' }}>{charPoints}/80</span>
+                Step 3: Stats 
+                <span className="flex items-center gap-2">
+                  {!isExporting && <button onClick={handleRandomizeStats} className="px-1 text-[8px] hidden-on-print" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>🎲 Roll</button>}
+                  <span className="font-black" style={{ color: charPoints > 80 ? '#dc2626' : '#9ca3af' }}>{charPoints}/80</span>
+                </span>
               </h2>
               <div className="grid grid-cols-2 gap-x-4">
                 {(Object.keys(characteristics) as (keyof Characteristics)[]).map(k => (
                   <div key={k} className="flex justify-between items-center text-xs mb-1 border-b" style={{ borderColor: '#e5e7eb' }}>
                     <span className="font-bold" style={{ opacity: 0.7, color: '#000000' }}>{k}</span>
-                    <input type="number" className="w-8 border-none text-center bg-transparent font-black" value={characteristics[k]} onChange={e => setCharacteristics({...characteristics, [k]: parseInt(e.target.value) || 0})} style={{ color: '#000000' }} />
+                    <input type="number" className="w-8 border-none text-center bg-transparent font-black outline-none" value={characteristics[k]} onChange={e => setCharacteristics({...characteristics, [k]: parseInt(e.target.value) || 0})} style={{ color: '#000000' }} />
                   </div>
                 ))}
               </div>
@@ -329,6 +447,11 @@ export default function CharacterBuilder() {
                 <div className="flex justify-between border-b font-black" style={{ borderColor: '#f3f4f6', color: '#1e3a8a' }}><span>Tenacity (POW):</span> <strong>{characteristics.POW}</strong></div>
                 <div className="flex justify-between"><span>Magic Points:</span> <strong>{characteristics.POW - dedicatedMPs}</strong></div>
               </div>
+              {getAgeingText() && (
+                <div className="mt-2 p-1 text-[8px] font-bold uppercase tracking-wide text-center" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #f87171' }}>
+                  {getAgeingText()}
+                </div>
+              )}
             </div>
 
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#fef2f2' }}>
@@ -348,37 +471,120 @@ export default function CharacterBuilder() {
             </div>
 
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#faf5ff' }}>
-              <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#581c87' }}>Step 10: Passions</h2>
+              <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#581c87' }}>Step 12: Passions</h2>
               {passions.map((p, idx) => (
                 <div key={p.id} className="flex gap-1 mb-1 items-center">
-                  <input className="text-[10px] border flex-1 p-1" placeholder="Love / Hate..." value={p.target} 
+                  <input className="text-[10px] border flex-1 p-1 outline-none" placeholder="Love / Hate..." value={p.target} 
                     onChange={e => { const n = [...passions]; n[idx].target = e.target.value; setPassions(n); }} style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }} />
-                  <span className="text-[10px] font-black p-1 border min-w-[35px] text-center" style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>{characteristics.POW + characteristics.CHA}%</span>
-                  {!isExporting && <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="font-bold text-xs" style={{ color: '#dc2626' }}>×</button>}
+                  <span className="text-[10px] font-black p-1 border min-w-[35px] text-center" style={{ borderColor: '#d1d5db', backgroundColor: '#ffffff', color: '#000000' }}>{characteristics.POW + characteristics.CHA + 30}%</span>
+                  {!isExporting && <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="font-bold text-xs hidden-on-print" style={{ color: '#dc2626', cursor: 'pointer' }}>×</button>}
                 </div>
               ))}
-              {!isExporting && <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] w-full py-1 mt-1 uppercase" style={{ backgroundColor: '#000000', color: '#ffffff' }}>+ Add Passion</button>}
+              {!isExporting && <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] w-full py-1 mt-1 uppercase hidden-on-print" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>+ Add Passion</button>}
             </div>
           </section>
 
+          {/* COLUMN 3 & 4: SKILLS & MAGIC TABLE */}
           <section className="md:col-span-2 border-2 flex flex-col" style={{ borderColor: '#000000', backgroundColor: '#ffffff' }}>
             <div className="p-1 flex justify-around text-[9px] font-bold uppercase tracking-tighter" style={{ backgroundColor: '#000000', color: '#ffffff' }}>
-              <div className="underline underline-offset-2" style={{ color: cultureSpent > 100 ? '#f87171' : '#ffffff' }}>Cult: {cultureSpent}/100</div>
-              <div className="underline underline-offset-2" style={{ color: careerSpent > 100 ? '#f87171' : '#ffffff' }}>Car: {careerSpent}/100</div>
-              <div className="underline underline-offset-2" style={{ color: bonusSpent > 150 ? '#f87171' : '#ffffff' }}>Bonus: {bonusSpent}/150</div>
+              <div className="underline underline-offset-2" style={{ color: cultureSpent > 100 ? '#f87171' : '#ffffff' }}>Step 8: Cult: {cultureSpent}/100</div>
+              <div className="underline underline-offset-2" style={{ color: careerSpent > 100 ? '#f87171' : '#ffffff' }}>Step 8: Car: {careerSpent}/100</div>
+              <div className="underline underline-offset-2" style={{ color: bonusSpent > bonusPoolMax ? '#f87171' : '#ffffff' }}>Step 10: Bonus: {bonusSpent}/{bonusPoolMax}</div>
             </div>
-            <div className="overflow-y-auto max-h-[850px] p-2">
+            
+            <div className="overflow-y-auto max-h-[800px] p-2 flex-1">
               <table className="w-full border-collapse">
                 <thead className="text-[9px] uppercase border-b text-left" style={{ borderColor: '#000000', color: '#000000' }}>
                   <tr><th className="p-1">Skill</th><th>Base</th><th className="text-center" style={{ backgroundColor: '#eff6ff' }}>C</th><th className="text-center" style={{ backgroundColor: '#f0fdf4' }}>J</th><th className="text-center" style={{ backgroundColor: '#faf5ff' }}>B</th><th className="text-center font-black">Total</th></tr>
                 </thead>
                 <tbody>
                   {standardSkillKeys.map(k => <SkillRow key={k} name={k} base={getStandardBase(k)} type="standard" />)}
+                  
                   <tr className="text-[9px] font-bold text-center uppercase tracking-widest" style={{ backgroundColor: '#f3f4f6', color: '#000000' }}><td colSpan={6} className="py-1">Professional Skills</td></tr>
-                  {availableProfSkills.map(k => <SkillRow key={k} name={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
+                  {allProfSkills.map(k => <SkillRow key={k} name={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
+                  
+                  <tr className="text-[9px] font-bold text-center uppercase tracking-widest" style={{ backgroundColor: '#fef2f2', color: '#7f1d1d' }}><td colSpan={6} className="py-1">Step 9: Magic & Runic Affinities</td></tr>
+                  <SkillRow name="Folk Magic" base={characteristics.POW + characteristics.CHA + 30} type="magic" />
+                  
+                  {/* Dynamic Rune Rows */}
+                  <tr className="border-b text-[10px]" style={{ borderColor: '#d1d5db' }}>
+                    <td className="p-1 font-bold">
+                      <input className="bg-transparent outline-none font-bold w-full" value={rune1} onChange={e => setRune1(e.target.value)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center" style={{ color: '#6b7280' }}>{characteristics.POW + characteristics.POW + 30}</td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#eff6ff', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune1]?.culture || 0} onChange={e => handleSkillChange(rune1, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#f0fdf4', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune1]?.career || 0} onChange={e => handleSkillChange(rune1, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#faf5ff', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune1]?.bonus || 0} onChange={e => handleSkillChange(rune1, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center font-bold border-l" style={{ borderColor: '#e5e7eb', color: '#000000' }}>
+                      {(characteristics.POW + characteristics.POW + 30) + (skillSpends[rune1]?.culture || 0) + (skillSpends[rune1]?.career || 0) + (skillSpends[rune1]?.bonus || 0)}%
+                    </td>
+                  </tr>
+
+                  <tr className="border-b text-[10px]" style={{ borderColor: '#d1d5db' }}>
+                    <td className="p-1 font-bold">
+                      <input className="bg-transparent outline-none font-bold w-full" value={rune2} onChange={e => setRune2(e.target.value)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center" style={{ color: '#6b7280' }}>{characteristics.POW + characteristics.POW + 20}</td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#eff6ff', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune2]?.culture || 0} onChange={e => handleSkillChange(rune2, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#f0fdf4', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune2]?.career || 0} onChange={e => handleSkillChange(rune2, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#faf5ff', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune2]?.bonus || 0} onChange={e => handleSkillChange(rune2, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center font-bold border-l" style={{ borderColor: '#e5e7eb', color: '#000000' }}>
+                      {(characteristics.POW + characteristics.POW + 20) + (skillSpends[rune2]?.culture || 0) + (skillSpends[rune2]?.career || 0) + (skillSpends[rune2]?.bonus || 0)}%
+                    </td>
+                  </tr>
+
+                  <tr className="border-b text-[10px]" style={{ borderColor: '#d1d5db' }}>
+                    <td className="p-1 font-bold">
+                      <input className="bg-transparent outline-none font-bold w-full" value={rune3} onChange={e => setRune3(e.target.value)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center" style={{ color: '#6b7280' }}>{characteristics.POW + characteristics.POW + 10}</td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#eff6ff', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune3]?.culture || 0} onChange={e => handleSkillChange(rune3, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#f0fdf4', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune3]?.career || 0} onChange={e => handleSkillChange(rune3, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center border-l" style={{ backgroundColor: '#faf5ff', borderColor: '#e5e7eb' }}>
+                        <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={skillSpends[rune3]?.bonus || 0} onChange={e => handleSkillChange(rune3, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+                    </td>
+                    <td className="text-center font-bold border-l" style={{ borderColor: '#e5e7eb', color: '#000000' }}>
+                      {(characteristics.POW + characteristics.POW + 10) + (skillSpends[rune3]?.culture || 0) + (skillSpends[rune3]?.career || 0) + (skillSpends[rune3]?.bonus || 0)}%
+                    </td>
+                  </tr>
+
                 </tbody>
               </table>
             </div>
+
+            {/* CUSTOM HOBBY SKILL ADDER (Hidden on Print) */}
+            {!isExporting && (
+              <div className="p-2 border-t text-[9px] bg-gray-50 flex gap-2 items-center hidden-on-print" style={{ borderColor: '#000000' }}>
+                <span className="font-bold uppercase tracking-wider">Hobby / Specialty:</span>
+                <select className="border p-1 bg-white outline-none" value={newSkillBase} onChange={e => setNewSkillBase(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }}>
+                  <option>Lore</option>
+                  <option>Craft</option>
+                  <option>Art</option>
+                  <option>Language</option>
+                  <option>Combat Style</option>
+                  <option>Custom Professional</option>
+                </select>
+                <input className="border p-1 flex-1 outline-none" placeholder="e.g. History, Blacksmithing..." value={newSkillSpec} onChange={e => setNewSkillSpec(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }} />
+                <button onClick={handleAddCustomSkill} className="px-3 py-1 font-bold tracking-widest text-white uppercase" style={{ backgroundColor: '#000000', cursor: 'pointer' }}>Add</button>
+              </div>
+            )}
+
             <div className="p-1 border-t text-[8px] italic text-center uppercase tracking-widest font-bold mt-auto" style={{ borderColor: '#000000', backgroundColor: '#7f1d1d', color: '#ffffff' }}>
               Sorcery Cap: Magic skills cannot exceed High Speech ({highSpeechTotal}%).
             </div>

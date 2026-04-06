@@ -1,65 +1,32 @@
 [
-  {
-    "id": "artist",
-    "name": "Artist",
-    "allowedCultures": ["Civilised", "Melnibonéan"],
-    "standardSkills": ["Conceal", "Customs", "Influence", "Insight", "Locale", "Perception", "Unarmed"],
-    "professionalSkills": ["Art", "Commerce", "Courtesy", "Craft", "Language", "Streetwise"]
-  },
-  {
-    "id": "beggar",
-    "name": "Beggar",
-    "allowedCultures": ["Civilised"],
-    "standardSkills": ["Deceit", "Evade", "Influence", "Insight", "Locale", "Perception"],
-    "professionalSkills": ["Acting", "Commerce", "Language", "Streetwise"]
-  },
-  {
-    "id": "dreamthief",
-    "name": "Dreamthief",
-    "allowedCultures": ["Civilised", "Barbarian", "Nomad", "Melnibonéan"],
-    "standardSkills": ["Dance", "Influence", "Insight", "Perception", "Sing", "Willpower"],
-    "professionalSkills": ["Art", "Commerce", "Courtesy", "Language", "Lore (Million Spheres)", "Musicianship", "Seduction", "Dreamtheft"]
-  },
-  {
-    "id": "engineer",
-    "name": "Engineer (Maidahk)",
-    "allowedCultures": ["Civilised"],
-    "standardSkills": ["Brawn", "Drive", "Endurance", "FirstAid", "Locale", "Perception"],
-    "professionalSkills": ["Commerce", "Craft", "Engineering", "Lore (Physics)", "Lore (Technical Speciality)", "Mechanisms", "Survival"]
-  },
-  {
-    "id": "guerrilla",
-    "name": "Guerrilla / Resistance Fighter",
-    "allowedCultures": ["Civilised", "Barbarian", "Nomad", "Primitive"],
-    "standardSkills": ["Athletics", "Brawn", "Conceal", "Endurance", "Locale", "Stealth"],
-    "professionalSkills": ["Craft", "Disguise", "Lore (Strategy and Tactics)", "Mechanisms", "Navigation", "Survival", "Track"]
-  },
-  {
-    "id": "scrutineer",
-    "name": "Scrutineer",
-    "allowedCultures": ["Civilised"],
-    "standardSkills": ["FirstAid", "Endurance", "Influence", "Insight", "Locale", "Perception", "Willpower"],
-    "professionalSkills": ["Language (High Speech)", "Language", "Literacy ('pande)", "Lore (Stargazing)", "Lore (Elithior)", "Lore (Mathematics)", "Rune Casting"]
-  },
-  {
-    "id": "shaman",
-    "name": "Shaman",
-    "allowedCultures": ["Barbarian", "Nomad", "Primitive", "Melnibonéan"],
-    "standardSkills": ["Customs", "Dance", "Deceit", "Influence", "Insight", "Locale", "Willpower"],
-    "professionalSkills": ["Binding", "Healing", "Lore", "Oratory", "Trance"]
-  },
-  {
-    "id": "sorcerer",
-    "name": "Sorcerer",
-    "allowedCultures": ["Civilised", "Melnibonéan", "Barbarian", "Nomad"],
-    "standardSkills": ["Customs", "Deceit", "Influence", "Insight", "Locale", "Perception", "Willpower"],
-    "professionalSkills": ["Language (High Speech)", "Literacy", "Command", "Summoning Ritual", "Rune Casting"]
-  },
-  {
-    "id": "warrior_priest",
-    "name": "Warrior-priest",
-    "allowedCultures": ["Civilised", "Barbarian", "Nomad", "Melnibonéan", "Primitive"],
-    "standardSkills": ["Athletics", "Brawn", "Endurance", "Evade", "Unarmed"],
-    "professionalSkills": ["Craft (Torture)", "Language (High Speech)", "Lore (Chaos)", "Lore (Strategy and Tactics)", "Lore (Military History)", "Oratory", "Survival"]
-  }
+  { "id": "agent", "name": "Agent", "standardSkills": ["Conceal", "Deceit", "Evade", "Influence", "Insight", "Perception", "Stealth"], "professionalSkills": ["Commerce", "Courtesy", "Disguise", "Language", "Oratory", "Streetwise", "Track"] },
+  { "id": "alchemist", "name": "Alchemist", "standardSkills": ["Evaluate", "FirstAid", "Insight", "Locale", "Perception", "Willpower"], "professionalSkills": ["Craft", "Healing", "Language", "Lore", "Mechanisms"] },
+  { "id": "artist", "name": "Artist (Elric)", "standardSkills": ["Deceit", "Evade", "Influence", "Insight", "Locale", "Perception"], "professionalSkills": ["Acting", "Art", "Commerce", "Language", "Streetwise"] },
+  { "id": "beast_handler", "name": "Beast Handler", "standardSkills": ["Athletics", "Brawn", "Drive", "Endurance", "Ride", "Willpower"], "professionalSkills": ["Acrobatics", "Craft", "Lore", "Survival", "Track"] },
+  { "id": "beggar", "name": "Beggar (Elric)", "standardSkills": ["Conceal", "Customs", "Influence", "Insight", "Locale", "Perception", "Unarmed"], "professionalSkills": ["Art", "Commerce", "Courtesy", "Craft", "Language", "Streetwise"] },
+  { "id": "courtesan", "name": "Courtesan", "standardSkills": ["Dance", "Deceit", "Influence", "Insight", "Perception", "Sing"], "professionalSkills": ["Art", "Commerce", "Courtesy", "Language", "Seduction", "Streetwise"] },
+  { "id": "courtier", "name": "Courtier", "standardSkills": ["Conceal", "Dance", "Deceit", "Influence", "Insight", "NativeTongue"], "professionalSkills": ["Art", "Commerce", "Courtesy", "Language", "Lore", "Oratory", "Seduction"] },
+  { "id": "crafter", "name": "Crafter", "standardSkills": ["Brawn", "Customs", "Evaluate", "Influence", "Insight", "Locale"], "professionalSkills": ["Art", "Commerce", "Craft", "Engineering", "Mechanisms", "Streetwise"] },
+  { "id": "dreamthief", "name": "Dreamthief (Elric)", "standardSkills": ["Dance", "Influence", "Insight", "Perception", "Sing", "Willpower"], "professionalSkills": ["Art", "Commerce", "Courtesy", "Dreamtheft", "Language", "Lore (Million Spheres)", "Musicianship", "Seduction"] },
+  { "id": "engineer", "name": "Engineer (Maidahk)", "standardSkills": ["Brawn", "Drive", "Endurance", "FirstAid", "Locale", "Perception"], "professionalSkills": ["Commerce", "Craft", "Engineering", "Lore", "Mechanisms", "Survival"] },
+  { "id": "entertainer", "name": "Entertainer", "standardSkills": ["Athletics", "Dance", "Deceit", "Influence", "Insight", "Sing"], "professionalSkills": ["Acrobatics", "Acting", "Art", "Musicianship", "Oratory", "Sleight", "Streetwise"] },
+  { "id": "explorer", "name": "Explorer", "standardSkills": ["Athletics", "Boating", "Endurance", "Evade", "Perception", "Swim"], "professionalSkills": ["Commerce", "Language", "Lore", "Navigation", "Survival", "Track"] },
+  { "id": "farmer", "name": "Farmer", "standardSkills": ["Athletics", "Brawn", "Drive", "Endurance", "Locale", "Unarmed"], "professionalSkills": ["Craft", "Healing", "Lore", "Mechanisms", "Survival", "Track"] },
+  { "id": "fisher", "name": "Fisher", "standardSkills": ["Athletics", "Boating", "Brawn", "Endurance", "Swim", "Unarmed"], "professionalSkills": ["Craft", "Lore", "Navigation", "Seamanship", "Survival"] },
+  { "id": "guerrilla", "name": "Guerrilla/Resistance Fighter (Elric)", "standardSkills": ["Athletics", "Brawn", "Conceal", "Endurance", "Locale", "Stealth"], "professionalSkills": ["Craft", "Disguise", "Lore (Strategy)", "Mechanisms", "Navigation", "Survival", "Track"] },
+  { "id": "herder", "name": "Herder", "standardSkills": ["Athletics", "Brawn", "Endurance", "FirstAid", "Locale", "Perception"], "professionalSkills": ["Craft", "Healing", "Lore", "Navigation", "Survival", "Track"] },
+  { "id": "hunter", "name": "Hunter", "standardSkills": ["Athletics", "Brawn", "Conceal", "Endurance", "Perception", "Stealth"], "professionalSkills": ["Craft", "Lore", "Navigation", "Survival", "Track"] },
+  { "id": "merchant", "name": "Merchant", "standardSkills": ["Customs", "Deceit", "Drive", "Influence", "Insight", "NativeTongue"], "professionalSkills": ["Art", "Commerce", "Courtesy", "Language", "Lore", "Navigation", "Streetwise"] },
+  { "id": "miner", "name": "Miner", "standardSkills": ["Athletics", "Brawn", "Endurance", "Evaluate", "Locale", "Perception"], "professionalSkills": ["Craft", "Engineering", "Lore", "Mechanisms", "Navigation", "Survival"] },
+  { "id": "official", "name": "Official", "standardSkills": ["Customs", "Deceit", "Influence", "Insight", "Locale", "NativeTongue"], "professionalSkills": ["Commerce", "Courtesy", "Language", "Literacy", "Lore", "Oratory"] },
+  { "id": "physician", "name": "Physician", "standardSkills": ["Customs", "FirstAid", "Influence", "Insight", "Locale", "Perception"], "professionalSkills": ["Commerce", "Courtesy", "Craft", "Healing", "Language", "Lore"] },
+  { "id": "priest", "name": "Priest (Elric)", "standardSkills": ["Customs", "Influence", "Insight", "Locale", "NativeTongue", "Willpower"], "professionalSkills": ["Courtesy", "Language", "Lore", "Oratory", "Pact", "Rune Casting", "Devotion"] },
+  { "id": "sailor", "name": "Sailor", "standardSkills": ["Athletics", "Boating", "Brawn", "Endurance", "Swim", "Unarmed"], "professionalSkills": ["Acrobatics", "Craft", "Language", "Navigation", "Seamanship", "Survival"] },
+  { "id": "scholar", "name": "Scholar", "standardSkills": ["Customs", "Evaluate", "Influence", "Insight", "Locale", "NativeTongue"], "professionalSkills": ["Commerce", "Courtesy", "Language", "Literacy", "Lore", "Oratory"] },
+  { "id": "scrutineer", "name": "Scrutineer (Elric)", "standardSkills": ["Endurance", "FirstAid", "Influence", "Insight", "Locale", "Perception", "Willpower"], "professionalSkills": ["Language (High Speech)", "Literacy", "Lore", "Rune Casting", "Pact"] },
+  { "id": "shaman", "name": "Shaman (Elric)", "standardSkills": ["Customs", "Dance", "Deceit", "Influence", "Insight", "Locale", "Willpower"], "professionalSkills": ["Binding", "Healing", "Lore", "Oratory", "Trance"] },
+  { "id": "sorcerer", "name": "Sorcerer (Elric)", "standardSkills": ["Customs", "Deceit", "Influence", "Insight", "Locale", "Perception", "Willpower"], "professionalSkills": ["Language (High Speech)", "Literacy", "Command", "Summoning Ritual", "Rune Casting", "Pact"] },
+  { "id": "thief", "name": "Thief", "standardSkills": ["Athletics", "Conceal", "Deceit", "Evade", "Perception", "Stealth"], "professionalSkills": ["Acrobatics", "Commerce", "Disguise", "Mechanisms", "Sleight", "Streetwise"] },
+  { "id": "warrior", "name": "Warrior", "standardSkills": ["Athletics", "Brawn", "Endurance", "Evade", "Unarmed"], "professionalSkills": ["Craft", "Engineering", "Lore", "Oratory", "Survival", "Track"] },
+  { "id": "warrior_priest", "name": "Warrior-Priest (Elric)", "standardSkills": ["Athletics", "Brawn", "Endurance", "Evade", "Unarmed"], "professionalSkills": ["Craft (Torture)", "Language (High Speech)", "Lore (Chaos)", "Lore (Strategy)", "Oratory", "Survival", "Pact"] }
 ]
