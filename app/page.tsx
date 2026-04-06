@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import culturesData from '../data/cultures.json';
 import careersData from '../data/careers.json';
 import stylesData from '../data/combatStyles.json';
+import backgroundEventsData from '../data/backgroundEvents.json';
 
 // --- THEME ASSETS ---
 const parchmentBg = "https://www.transparenttextures.com/patterns/parchment.png";
@@ -43,18 +44,6 @@ const getProfSkillBase = (skillName: string, chars: Characteristics) => {
   if (name.includes('combat style')) return chars.STR + chars.DEX;
   return chars.INT * 2; // Fallback
 };
-
-const backgroundEvents = [
-  "Survived a pirate raid on a merchant cog.",
-  "Witnessed a summoning that went horribly wrong.",
-  "Exiled from home due to a forbidden romance.",
-  "Recovered a minor relic of a forgotten Sorcerer-King.",
-  "Debt-bound to a Pan Tangian merchant prince.",
-  "Family vanished during a chaotic storm at sea.",
-  "Served as a galley slave in the southern ports.",
-  "Spared by a Myyrrhn hunter for reasons unknown.",
-  "Found an ancient coin from the time of the Dharzi."
-];
 
 // --- DICE ROLLER LOGIC ---
 const rollD6 = () => Math.floor(Math.random() * 6) + 1;
@@ -369,7 +358,7 @@ export default function CharacterBuilder() {
 
             <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#fffbeb' }}>
               <h2 className="font-bold border-b mb-1 uppercase text-[10px] flex justify-between font-black" style={{ borderColor: '#000000', color: '#000000' }}>
-                Step 2: Background {!isExporting && <button onClick={() => setBackground(backgroundEvents[Math.floor(Math.random()*backgroundEvents.length)])} className="px-1 text-[8px] hidden-on-print" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>Roll</button>}
+                Step 2: Background {!isExporting && <button onClick={() => setBackground(backgroundEventsData[Math.floor(Math.random()*backgroundEventsData.length)])} className="px-1 text-[8px] hidden-on-print" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>Roll</button>}
               </h2>
               <p className="text-[10px] italic leading-tight min-h-[35px] flex items-center" style={{ color: '#000000' }}>{background}</p>
             </div>
@@ -571,7 +560,9 @@ export default function CharacterBuilder() {
             {/* CUSTOM HOBBY SKILL ADDER (Hidden on Print) */}
             {!isExporting && (
               <div className="p-2 border-t text-[9px] bg-gray-50 flex gap-2 items-center hidden-on-print" style={{ borderColor: '#000000' }}>
-                <span className="font-bold uppercase tracking-wider">Hobby / Specialty:</span>
+                <span className="font-bold uppercase tracking-wider">
+                  Hobby ({customSkills.length} / {age >= 28 ? 2 : 1}):
+                </span>
                 <select className="border p-1 bg-white outline-none" value={newSkillBase} onChange={e => setNewSkillBase(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }}>
                   <option>Lore</option>
                   <option>Craft</option>
@@ -581,7 +572,14 @@ export default function CharacterBuilder() {
                   <option>Custom Professional</option>
                 </select>
                 <input className="border p-1 flex-1 outline-none" placeholder="e.g. History, Blacksmithing..." value={newSkillSpec} onChange={e => setNewSkillSpec(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }} />
-                <button onClick={handleAddCustomSkill} className="px-3 py-1 font-bold tracking-widest text-white uppercase" style={{ backgroundColor: '#000000', cursor: 'pointer' }}>Add</button>
+                <button 
+                  onClick={handleAddCustomSkill} 
+                  disabled={customSkills.length >= (age >= 28 ? 2 : 1)}
+                  className="px-3 py-1 font-bold tracking-widest text-white uppercase disabled:opacity-30 disabled:cursor-not-allowed" 
+                  style={{ backgroundColor: '#000000', cursor: 'pointer' }}
+                >
+                  Add
+                </button>
               </div>
             )}
 
