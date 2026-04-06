@@ -155,7 +155,7 @@ export default function CharacterBuilder() {
     }));
   };
 
-  // --- PDF EXPORT LOGIC ---
+  // --- PDF EXPORT LOGIC WITH CORS FIX ---
   const handleExportPDF = async () => {
     if (!sheetRef.current) return;
     setIsExporting(true);
@@ -171,7 +171,23 @@ export default function CharacterBuilder() {
       const canvas = await html2canvas(sheetRef.current, { 
         scale: 2, 
         useCORS: true,
-        backgroundColor: '#ece0c8'
+        backgroundColor: '#ffffff', // Force white background for the PDF
+        onclone: (clonedDoc) => {
+            // Remove the external watermark to prevent CORS Security Crash
+            const watermark = clonedDoc.getElementById('pdf-watermark');
+            if (watermark) watermark.style.display = 'none';
+
+            // Remove background opacity so the printout is a clean, solid white sheet
+            const sheetContainer = clonedDoc.getElementById('pdf-sheet-container');
+            if (sheetContainer) {
+                sheetContainer.style.backgroundColor = '#ffffff';
+                sheetContainer.style.boxShadow = 'none';
+            }
+            
+            // Hide buttons that shouldn't appear on paper
+            const buttons = clonedDoc.querySelectorAll('.hidden-on-print');
+            buttons.forEach(btn => (btn as HTMLElement).style.display = 'none');
+        }
       });
       
       const imgData = canvas.toDataURL('image/png');
@@ -242,10 +258,11 @@ export default function CharacterBuilder() {
         </button>
       </div>
 
-      <div ref={sheetRef} className="max-w-7xl mx-auto bg-white/90 border-4 border-black shadow-[0_0_50px_rgba(0,0,0,0.2)] p-6 relative overflow-hidden">
+      <div id="pdf-sheet-container" ref={sheetRef} className="max-w-7xl mx-auto bg-white/90 border-4 border-black shadow-[0_0_50px_rgba(0,0,0,0.2)] p-6 relative overflow-hidden">
         
-        {/* Watermark Layer */}
+        {/* Watermark Layer (Hidden on PDF export) */}
         <div 
+          id="pdf-watermark"
           className="absolute inset-0 opacity-[0.03] pointer-events-none grayscale"
           style={{ backgroundImage: `url(${watermarkURL})`, backgroundSize: '50%', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
         />
