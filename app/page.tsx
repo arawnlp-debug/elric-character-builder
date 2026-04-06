@@ -70,7 +70,7 @@ export default function CharacterBuilder() {
   const [pactName, setPactName] = useState("");
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
 
-  // --- DERIVED DATA ---
+  // --- DERIVED DATA & MATH ---
   const activeCulture = (culturesData as any[]).find(c => c.id === selectedCulture);
   const activeCareer = (careersData as any[]).find(c => c.id === selectedCareer);
   const activeStyle = (stylesData as any[]).find(s => s.id === selectedStyle);
@@ -85,6 +85,38 @@ export default function CharacterBuilder() {
   const careerSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.career || 0), 0);
   const bonusSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.bonus || 0), 0);
 
+  // Mythras Derived Combat Stats
+  const hpBase = Math.ceil((characteristics.CON + characteristics.SIZ) / 5);
+  const actionPoints = characteristics.DEX + characteristics.INT <= 24 ? 2 : 3;
+  const initiative = Math.ceil((characteristics.DEX + characteristics.INT) / 2);
+  
+  const strSiz = characteristics.STR + characteristics.SIZ;
+  let damageMod = "+0";
+  if (strSiz <= 5) damageMod = "-1d8";
+  else if (strSiz <= 10) damageMod = "-1d6";
+  else if (strSiz <= 15) damageMod = "-1d4";
+  else if (strSiz <= 20) damageMod = "-1d2";
+  else if (strSiz <= 25) damageMod = "+0";
+  else if (strSiz <= 30) damageMod = "+1d2";
+  else if (strSiz <= 35) damageMod = "+1d4";
+  else if (strSiz <= 40) damageMod = "+1d6";
+  else if (strSiz <= 45) damageMod = "+1d8";
+  else if (strSiz <= 50) damageMod = "+1d10";
+  else if (strSiz <= 60) damageMod = "+1d12";
+
+  let healingRate = 1;
+  if (characteristics.CON >= 6 && characteristics.CON <= 10) healingRate = 2;
+  else if (characteristics.CON >= 11 && characteristics.CON <= 15) healingRate = 3;
+  else if (characteristics.CON >= 16) healingRate = Math.ceil(characteristics.CON / 5);
+
+  let luck = 1;
+  if (characteristics.POW >= 7 && characteristics.POW <= 12) luck = 2;
+  else if (characteristics.POW >= 13 && characteristics.POW <= 18) luck = 3;
+  else if (characteristics.POW >= 19) luck = Math.ceil(characteristics.POW / 6);
+
+  const movement = race === "Myyrrhn" ? "6m (12m Fly)" : "6m";
+
+  // Skill Calculations
   const getStandardBase = (s: string) => {
     const c = characteristics;
     let base = 0;
@@ -161,7 +193,7 @@ export default function CharacterBuilder() {
         <header className="border-b-4 border-black mb-6 pb-2 flex justify-between items-end relative z-10">
           <h1 className="text-4xl font-black uppercase tracking-tighter italic drop-shadow-sm">Elric: Mythras</h1>
           <div className="text-right text-[10px] font-bold uppercase tracking-widest text-red-900">
-            Young Kingdoms System v1.2
+            Young Kingdoms System v1.3
           </div>
         </header>
 
@@ -207,7 +239,7 @@ export default function CharacterBuilder() {
             </div>
           </section>
 
-          {/* COLUMN 2: STATS & ATTRIBUTES */}
+          {/* COLUMN 2: STATS, ATTRIBUTES & LOCATIONS */}
           <section className="space-y-4">
             <div className="border-2 border-black p-2 bg-white/60 shadow-sm">
               <h2 className="font-bold border-b border-black mb-2 uppercase text-[10px] flex justify-between font-black">
@@ -226,11 +258,31 @@ export default function CharacterBuilder() {
             <div className="border-2 border-black p-2 bg-stone-100/80 shadow-sm">
               <h2 className="font-bold border-b border-black mb-2 uppercase text-[10px] font-black">Step 4: Attributes</h2>
               <div className="text-[10px] space-y-1">
-                <div className="flex justify-between border-b border-black/5"><span>Action Points:</span> <strong>{characteristics.DEX + characteristics.INT <= 24 ? 2 : 3}</strong></div>
-                <div className="flex justify-between border-b border-black/5 text-red-900 font-bold"><span>Hit Points (Head):</span> <strong>{Math.ceil((characteristics.CON + characteristics.SIZ) / 5)}</strong></div>
+                <div className="flex justify-between border-b border-black/5"><span>Action Points:</span> <strong>{actionPoints}</strong></div>
+                <div className="flex justify-between border-b border-black/5"><span>Damage Modifier:</span> <strong>{damageMod}</strong></div>
+                <div className="flex justify-between border-b border-black/5"><span>Initiative Bonus:</span> <strong>{initiative}</strong></div>
+                <div className="flex justify-between border-b border-black/5"><span>Healing Rate:</span> <strong>{healingRate}</strong></div>
+                <div className="flex justify-between border-b border-black/5"><span>Luck Points:</span> <strong>{luck}</strong></div>
+                <div className="flex justify-between border-b border-black/5"><span>Movement:</span> <strong>{movement}</strong></div>
                 <div className="flex justify-between border-b border-black/5 text-blue-900 font-black"><span>Tenacity (POW):</span> <strong>{characteristics.POW}</strong></div>
                 <div className="flex justify-between"><span>Magic Points:</span> <strong>{characteristics.POW - dedicatedMPs}</strong></div>
               </div>
+            </div>
+
+            <div className="border-2 border-black p-2 bg-red-50/80 shadow-sm">
+              <h2 className="font-bold border-b border-black mb-2 uppercase text-[10px] font-black text-red-900">Hit Locations</h2>
+              <table className="w-full text-center text-[9px] uppercase tracking-wider">
+                <thead className="border-b border-black/20 text-gray-600"><tr><th>D20</th><th className="text-left">Location</th><th>HP</th></tr></thead>
+                <tbody>
+                  <tr className="border-b border-black/5"><td>1-3</td><td className="text-left font-bold">Right Leg</td><td className="font-black">{hpBase}</td></tr>
+                  <tr className="border-b border-black/5"><td>4-6</td><td className="text-left font-bold">Left Leg</td><td className="font-black">{hpBase}</td></tr>
+                  <tr className="border-b border-black/5"><td>7-9</td><td className="text-left font-bold">Abdomen</td><td className="font-black">{hpBase + 1}</td></tr>
+                  <tr className="border-b border-black/5"><td>10-12</td><td className="text-left font-bold">Chest</td><td className="font-black">{hpBase + 2}</td></tr>
+                  <tr className="border-b border-black/5"><td>13-15</td><td className="text-left font-bold">Right Arm</td><td className="font-black">{Math.max(1, hpBase - 1)}</td></tr>
+                  <tr className="border-b border-black/5"><td>16-18</td><td className="text-left font-bold">Left Arm</td><td className="font-black">{Math.max(1, hpBase - 1)}</td></tr>
+                  <tr><td>19-20</td><td className="text-left font-bold">Head</td><td className="font-black">{hpBase}</td></tr>
+                </tbody>
+              </table>
             </div>
 
             <div className="border-2 border-black p-2 bg-purple-50/80 shadow-sm">
@@ -243,35 +295,4 @@ export default function CharacterBuilder() {
                   <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="text-red-600 hover:text-black transition-colors font-bold text-xs">×</button>
                 </div>
               ))}
-              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-1 uppercase hover:bg-purple-900 transition-colors shadow-sm">+ Add Passion</button>
-            </div>
-          </section>
-
-          {/* COLUMN 3 & 4: SKILLS TABLE */}
-          <section className="md:col-span-2 border-2 border-black flex flex-col bg-white/40 shadow-sm">
-            <div className="bg-black text-white p-1 flex justify-around text-[9px] font-bold uppercase tracking-tighter">
-              <div className={cultureSpent > 100 ? 'text-red-400 underline underline-offset-2' : ''}>Cult: {cultureSpent}/100</div>
-              <div className={careerSpent > 100 ? 'text-red-400 underline underline-offset-2' : ''}>Car: {careerSpent}/100</div>
-              <div className={bonusSpent > 150 ? 'text-red-400 underline underline-offset-2' : ''}>Bonus: {bonusSpent}/150</div>
-            </div>
-            <div className="overflow-y-auto max-h-[700px] p-2">
-              <table className="w-full border-collapse">
-                <thead className="text-[9px] uppercase border-b border-black text-left">
-                  <tr><th className="p-1">Skill</th><th>Base</th><th className="bg-blue-600/10 text-center">C</th><th className="bg-green-600/10 text-center">J</th><th className="bg-purple-600/10 text-center">B</th><th className="text-center font-black">Total</th></tr>
-                </thead>
-                <tbody>
-                  {standardSkillKeys.map(k => <SkillRow key={k} name={k} base={getStandardBase(k)} type="standard" />)}
-                  <tr className="bg-black/10 text-[9px] font-bold text-center uppercase tracking-widest"><td colSpan={6} className="py-1">Professional Skills</td></tr>
-                  {availableProfSkills.map(k => <SkillRow key={k} name={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-1 border-t border-black bg-red-900 text-white text-[8px] italic text-center uppercase tracking-widest font-bold">
-              Sorcery Cap: Magic skills cannot exceed High Speech ({highSpeechTotal}%).
-            </div>
-          </section>
-        </div>
-      </div>
-    </main>
-  );
-}
+              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-1 uppercase hover:bg-purple-
