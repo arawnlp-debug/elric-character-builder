@@ -295,4 +295,35 @@ export default function CharacterBuilder() {
                   <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="text-red-600 hover:text-black transition-colors font-bold text-xs">×</button>
                 </div>
               ))}
-              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-1 uppercase hover:bg-purple-
+              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-1 uppercase hover:bg-purple-900 transition-colors shadow-sm">+ Add Passion</button>
+            </div>
+          </section>
+
+          {/* COLUMN 3 & 4: SKILLS TABLE */}
+          <section className="md:col-span-2 border-2 border-black flex flex-col bg-white/40 shadow-sm">
+            <div className="bg-black text-white p-1 flex justify-around text-[9px] font-bold uppercase tracking-tighter">
+              <div className={cultureSpent > 100 ? 'text-red-400 underline underline-offset-2' : ''}>Cult: {cultureSpent}/100</div>
+              <div className={careerSpent > 100 ? 'text-red-400 underline underline-offset-2' : ''}>Car: {careerSpent}/100</div>
+              <div className={bonusSpent > 150 ? 'text-red-400 underline underline-offset-2' : ''}>Bonus: {bonusSpent}/150</div>
+            </div>
+            <div className="overflow-y-auto max-h-[850px] p-2">
+              <table className="w-full border-collapse">
+                <thead className="text-[9px] uppercase border-b border-black text-left">
+                  <tr><th className="p-1">Skill</th><th>Base</th><th className="bg-blue-600/10 text-center">C</th><th className="bg-green-600/10 text-center">J</th><th className="bg-purple-600/10 text-center">B</th><th className="text-center font-black">Total</th></tr>
+                </thead>
+                <tbody>
+                  {standardSkillKeys.map(k => <SkillRow key={k} name={k} base={getStandardBase(k)} type="standard" />)}
+                  <tr className="bg-black/10 text-[9px] font-bold text-center uppercase tracking-widest"><td colSpan={6} className="py-1">Professional Skills</td></tr>
+                  {availableProfSkills.map(k => <SkillRow key={k} name={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-1 border-t border-black bg-red-900 text-white text-[8px] italic text-center uppercase tracking-widest font-bold mt-auto">
+              Sorcery Cap: Magic skills cannot exceed High Speech ({highSpeechTotal}%).
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
+}
