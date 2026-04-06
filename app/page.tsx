@@ -149,7 +149,6 @@ export default function CharacterBuilder() {
   const careerSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.career || 0), 0);
   const bonusSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.bonus || 0), 0);
 
-  // AUTOMATED PACT DEDICATION MATH
   const dedicatedMPs = pacts.reduce((sum, p) => sum + (Number(p.dedicatedPow) || 0), 0);
 
   // Mythras Derived Combat Stats
@@ -234,28 +233,16 @@ export default function CharacterBuilder() {
     });
   };
 
-  // --- RANDOMIZE SOCIAL CLASS & MONEY ---
   const handleRollSocialClass = () => {
     const roll = Math.floor(Math.random() * 100) + 1;
     let newClass = "Freeman";
     let newMoney = 0;
 
-    if (roll <= 15) {
-      newClass = "Slave / Outcast";
-      newMoney = 0;
-    } else if (roll <= 45) {
-      newClass = "Peasant / Poor";
-      newMoney = rollStat(2, 0) * 10;
-    } else if (roll <= 85) {
-      newClass = "Townsman / Freeman";
-      newMoney = rollStat(4, 0) * 75;
-    } else if (roll <= 98) {
-      newClass = "Minor Nobility / Merchant";
-      newMoney = rollStat(4, 0) * 500;
-    } else {
-      newClass = "High Nobility";
-      newMoney = rollStat(4, 0) * 1000;
-    }
+    if (roll <= 15) { newClass = "Slave / Outcast"; newMoney = 0; } 
+    else if (roll <= 45) { newClass = "Peasant / Poor"; newMoney = rollStat(2, 0) * 10; } 
+    else if (roll <= 85) { newClass = "Townsman / Freeman"; newMoney = rollStat(4, 0) * 75; } 
+    else if (roll <= 98) { newClass = "Minor Nobility / Merchant"; newMoney = rollStat(4, 0) * 500; } 
+    else { newClass = "High Nobility"; newMoney = rollStat(4, 0) * 1000; }
 
     setSocialClass(newClass);
     setMoney(`${newMoney} SP`);
@@ -274,7 +261,7 @@ export default function CharacterBuilder() {
 
         const canvas = await html2canvas(printSheetRef.current, { 
           scale: 2, 
-          backgroundColor: '#ffffff'
+          backgroundColor: '#f4ecd8' // Render on parchment base color
         });
         
         const imgData = canvas.toDataURL('image/png');
@@ -549,131 +536,170 @@ export default function CharacterBuilder() {
       </main>
 
       {/* -------------------------------------------------------------
-          2. HIDDEN PRINT VIEW (Classic Mythras/Elric Tabletop Sheet)
+          2. HIDDEN PRINT VIEW (Classic graphical RPG Sheet)
           ------------------------------------------------------------- */}
       <div 
         ref={printSheetRef} 
-        style={{ display: 'none', width: '900px', padding: '30px', backgroundColor: '#ffffff', color: '#000000', fontFamily: 'serif' }}
+        style={{ 
+          display: 'none', 
+          width: '1000px', // Large fixed width for high-res layout
+          padding: '40px', 
+          backgroundColor: '#f4ecd8', // Base parchment color
+          backgroundImage: `url(${parchmentBg})`, // Stylized parchment texture
+          color: '#000000', 
+          fontFamily: 'serif',
+          position: 'relative',
+          zIndex: 1
+        }}
       >
-        <header style={{ borderBottom: '6px solid #000000', paddingBottom: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* FAINT WATERMARK LOGO */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '600px',
+          height: '600px',
+          backgroundImage: `url(${watermarkURL})`,
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.05,
+          zIndex: -1,
+          pointerEvents: 'none',
+          filter: 'grayscale(100%)'
+        }}></div>
+
+        {/* PRINT HEADER */}
+        <header style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '4px solid #000000', paddingBottom: '10px' }}>
           <div>
-            <h1 style={{ color: '#000000', margin: 0, fontSize: '48px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em' }}>ELRIC!</h1>
-            <div style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>RuneQuest / Mythras System Sheet</div>
+            <h1 style={{ margin: 0, fontSize: '64px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em', lineHeight: '1' }}>ELRIC!</h1>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Mythras System Character Sheet</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'right' }}>
-            <div style={{ borderBottom: '2px solid #000000', minWidth: '200px', paddingBottom: '2px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginRight: '8px' }}>Name:</span> 
-              <span style={{ fontSize: '18px', fontStyle: 'italic' }}>{name || "________________"}</span>
+          <div style={{ width: '400px', display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+            <div style={{ borderBottom: '2px solid #000000', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>Character Name:</span> 
+              <span style={{ fontSize: '20px', fontStyle: 'italic', fontWeight: 'bold' }}>{name || "______________________"}</span>
             </div>
-            <div style={{ borderBottom: '2px solid #000000', minWidth: '200px', paddingBottom: '2px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginRight: '8px' }}>Player:</span> 
-              <span style={{ fontSize: '18px', fontStyle: 'italic' }}>________________</span>
+            <div style={{ borderBottom: '2px solid #000000', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>Player Name:</span> 
+              <span style={{ fontSize: '20px', fontStyle: 'italic' }}>______________________</span>
             </div>
           </div>
         </header>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px', marginBottom: '24px', padding: '16px', border: '4px solid #000000' }}>
-            <div style={{ borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Race:</span> {race}</div>
-            <div style={{ borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Age:</span> {age} ({ageCategory})</div>
-            <div style={{ borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Culture:</span> {activeCulture?.kingdom || "None"}</div>
-            <div style={{ borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Social Class:</span> {socialClass}</div>
-            <div style={{ gridColumn: 'span 2', borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Career:</span> {activeCareer?.name || "None"}</div>
-            <div style={{ gridColumn: 'span 2', borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Starting Money:</span> {money}</div>
+        {/* PRINT CORE IDENTITY BOX */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px', marginBottom: '24px', padding: '12px', border: '3px solid #000000', backgroundColor: 'rgba(255,255,255,0.6)' }}>
+            <div style={{ borderBottom: '1px solid #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Race:</span> <span style={{fontSize: '12px'}}>{race}</span></div>
+            <div style={{ borderBottom: '1px solid #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Age:</span> <span style={{fontSize: '12px'}}>{age} ({ageCategory})</span></div>
+            <div style={{ borderBottom: '1px solid #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Culture:</span> <span style={{fontSize: '12px'}}>{activeCulture?.kingdom || "None"}</span></div>
+            <div style={{ borderBottom: '1px solid #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Social Class:</span> <span style={{fontSize: '12px'}}>{socialClass}</span></div>
+            <div style={{ gridColumn: 'span 2', borderBottom: '1px solid #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Career:</span> <span style={{fontSize: '12px'}}>{activeCareer?.name || "None"}</span></div>
+            <div style={{ gridColumn: 'span 2', borderBottom: '1px solid #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Starting Money:</span> <span style={{fontSize: '12px'}}>{money}</span></div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '24px' }}>
+        {/* PRINT MAIN 3-COLUMN STRUCTURE */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '20px', marginBottom: '24px' }}>
           
-          {/* PRINT COL 1 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Characteristics</h3>
-              <table style={{ width: '100%', fontSize: '14px', border: '2px solid #000000', borderCollapse: 'collapse' }}>
+          {/* PRINT COL 1: CHARS & ATTRS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Characteristics</h3>
+              <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
                 <tbody>
                   {(Object.keys(characteristics) as (keyof Characteristics)[]).map((k, idx) => (
-                    <tr key={k} style={{ backgroundColor: idx % 2 === 0 ? '#f3f4f6' : '#ffffff' }}>
-                      <td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000', width: '60%' }}>{k}</td>
-                      <td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{characteristics[k]}</td>
+                    <tr key={k} style={{ borderBottom: '1px solid #000000', backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.05)' }}>
+                      <td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000', width: '50%' }}>{k}</td>
+                      <td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '16px' }}>{characteristics[k]}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Derived Attributes</h3>
-              <table style={{ width: '100%', fontSize: '14px', border: '2px solid #000000', borderCollapse: 'collapse' }}>
+            <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Attributes</h3>
+              <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
                 <tbody>
-                  <tr style={{ backgroundColor: '#f3f4f6' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Action Points</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{actionPoints}</td></tr>
-                  <tr style={{ backgroundColor: '#ffffff' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Damage Modifier</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{damageMod}</td></tr>
-                  <tr style={{ backgroundColor: '#f3f4f6' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Initiative Bonus</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{initiative}</td></tr>
-                  <tr style={{ backgroundColor: '#ffffff' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Healing Rate</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{healingRate}</td></tr>
-                  <tr style={{ backgroundColor: '#f3f4f6' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Movement</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{movement}</td></tr>
-                  <tr style={{ backgroundColor: '#ffffff' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Luck Points</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{luck}</td></tr>
-                  <tr style={{ backgroundColor: '#f3f4f6' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Tenacity (POW)</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{characteristics.POW}</td></tr>
-                  <tr style={{ backgroundColor: '#ffffff' }}><td style={{ padding: '4px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Magic Pts (Available)</td><td style={{ padding: '4px', textAlign: 'center', fontWeight: '900' }}>{characteristics.POW - dedicatedMPs}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Action Points</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{actionPoints}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000', backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Damage Mod.</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{damageMod}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Initiative Bonus</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{initiative}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000', backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Healing Rate</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{healingRate}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Movement</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{movement}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000', backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Luck Points</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{luck}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Tenacity (POW)</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{characteristics.POW}</td></tr>
+                  <tr style={{ borderBottom: '1px solid #000000', backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '6px', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Magic Points</td><td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px' }}>{characteristics.POW - dedicatedMPs}</td></tr>
                 </tbody>
               </table>
             </div>
 
-            <div>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Hit Locations</h3>
-              <table style={{ width: '100%', fontSize: '10px', textAlign: 'center', border: '2px solid #000000', borderCollapse: 'collapse' }}>
+          </div>
+
+          {/* PRINT COL 2: HIT LOCATIONS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)', height: '100%' }}>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Hit Locations & Armour</h3>
+              <table style={{ width: '100%', fontSize: '11px', textAlign: 'center', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ padding: '4px', borderBottom: '2px solid #000000' }}>1d20</th>
-                    <th style={{ textAlign: 'left', borderBottom: '2px solid #000000' }}>Location</th>
-                    <th style={{ borderBottom: '2px solid #000000' }}>AP</th>
-                    <th style={{ borderBottom: '2px solid #000000' }}>HP</th>
+                    <th style={{ padding: '6px', borderBottom: '2px solid #000000', borderRight: '1px solid #000000' }}>1d20</th>
+                    <th style={{ textAlign: 'left', padding: '6px', borderBottom: '2px solid #000000', borderRight: '1px solid #000000' }}>Location</th>
+                    <th style={{ padding: '6px', borderBottom: '2px solid #000000', borderRight: '1px solid #000000' }}>AP</th>
+                    <th style={{ padding: '6px', borderBottom: '2px solid #000000' }}>HP</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td style={{ borderBottom: '1px dotted #000000' }}>1-3</td><td style={{ textAlign: 'left', fontWeight: 'bold', borderBottom: '1px dotted #000000' }}>Right Leg</td><td style={{ borderBottom: '1px dotted #000000' }}>___</td><td style={{ fontWeight: '900', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{hpBase}</td></tr>
-                  <tr><td style={{ borderBottom: '1px dotted #000000' }}>4-6</td><td style={{ textAlign: 'left', fontWeight: 'bold', borderBottom: '1px dotted #000000' }}>Left Leg</td><td style={{ borderBottom: '1px dotted #000000' }}>___</td><td style={{ fontWeight: '900', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{hpBase}</td></tr>
-                  <tr><td style={{ borderBottom: '1px dotted #000000' }}>7-9</td><td style={{ textAlign: 'left', fontWeight: 'bold', borderBottom: '1px dotted #000000' }}>Abdomen</td><td style={{ borderBottom: '1px dotted #000000' }}>___</td><td style={{ fontWeight: '900', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{hpBase + 1}</td></tr>
-                  <tr><td style={{ borderBottom: '1px dotted #000000' }}>10-12</td><td style={{ textAlign: 'left', fontWeight: 'bold', borderBottom: '1px dotted #000000' }}>Chest</td><td style={{ borderBottom: '1px dotted #000000' }}>___</td><td style={{ fontWeight: '900', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{hpBase + 2}</td></tr>
-                  <tr><td style={{ borderBottom: '1px dotted #000000' }}>13-15</td><td style={{ textAlign: 'left', fontWeight: 'bold', borderBottom: '1px dotted #000000' }}>Right Arm</td><td style={{ borderBottom: '1px dotted #000000' }}>___</td><td style={{ fontWeight: '900', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{Math.max(1, hpBase - 1)}</td></tr>
-                  <tr><td style={{ borderBottom: '1px dotted #000000' }}>16-18</td><td style={{ textAlign: 'left', fontWeight: 'bold', borderBottom: '1px dotted #000000' }}>Left Arm</td><td style={{ borderBottom: '1px dotted #000000' }}>___</td><td style={{ fontWeight: '900', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{Math.max(1, hpBase - 1)}</td></tr>
-                  <tr><td>19-20</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>Head</td><td>___</td><td style={{ fontWeight: '900', fontSize: '14px' }}>{hpBase}</td></tr>
+                  <tr><td style={{ padding: '8px', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>1-3</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>Right Leg</td><td style={{ borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px', borderBottom: '1px solid #000000' }}>{hpBase}</td></tr>
+                  <tr style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '8px', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>4-6</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>Left Leg</td><td style={{ borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px', borderBottom: '1px solid #000000' }}>{hpBase}</td></tr>
+                  <tr><td style={{ padding: '8px', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>7-9</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>Abdomen</td><td style={{ borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px', borderBottom: '1px solid #000000' }}>{hpBase + 1}</td></tr>
+                  <tr style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '8px', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>10-12</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>Chest</td><td style={{ borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px', borderBottom: '1px solid #000000' }}>{hpBase + 2}</td></tr>
+                  <tr><td style={{ padding: '8px', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>13-15</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>Right Arm</td><td style={{ borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px', borderBottom: '1px solid #000000' }}>{Math.max(1, hpBase - 1)}</td></tr>
+                  <tr style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}><td style={{ padding: '8px', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>16-18</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}>Left Arm</td><td style={{ borderBottom: '1px solid #000000', borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px', borderBottom: '1px solid #000000' }}>{Math.max(1, hpBase - 1)}</td></tr>
+                  <tr><td style={{ padding: '8px', borderRight: '1px solid #000000' }}>19-20</td><td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', borderRight: '1px solid #000000' }}>Head</td><td style={{ borderRight: '1px solid #000000' }}></td><td style={{ padding: '8px', fontWeight: '900', fontSize: '16px' }}>{hpBase}</td></tr>
                 </tbody>
               </table>
             </div>
+          </div>
 
-            <div>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Passions</h3>
-              <table style={{ width: '100%', fontSize: '14px', border: '2px solid #000000', borderCollapse: 'collapse' }}>
+          {/* PRINT COL 3: PASSIONS & PACTS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Passions</h3>
+              <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
                 <tbody>
                   {passions.map((p, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '4px', fontWeight: 'bold', borderBottom: '1px solid #000000' }}>{p.target || "__________________"}</td>
-                      <td style={{ padding: '4px', textAlign: 'center', fontWeight: '900', borderLeft: '1px solid #000000', borderBottom: '1px solid #000000', width: '25%' }}>{characteristics.POW + characteristics.CHA + 30}%</td>
+                    <tr key={i} style={{ borderBottom: '1px solid #000000', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.05)' }}>
+                      <td style={{ padding: '6px', fontWeight: 'bold' }}>{p.target || "__________________"}</td>
+                      <td style={{ padding: '6px', textAlign: 'center', fontWeight: '900', fontSize: '14px', borderLeft: '1px solid #000000', width: '25%' }}>{characteristics.POW + characteristics.CHA + 30}%</td>
                     </tr>
                   ))}
-                  {[...Array(Math.max(0, 3 - passions.length))].map((_, i) => (
-                    <tr key={`empty-${i}`}>
-                      <td style={{ padding: '4px', fontWeight: 'bold', borderBottom: '1px solid #000000' }}>__________________</td>
-                      <td style={{ padding: '4px', borderLeft: '1px solid #000000', borderBottom: '1px solid #000000' }}></td>
+                  {[...Array(Math.max(0, 4 - passions.length))].map((_, i) => (
+                    <tr key={`empty-${i}`} style={{ borderBottom: '1px solid #000000' }}>
+                      <td style={{ padding: '6px', fontWeight: 'bold' }}></td>
+                      <td style={{ padding: '6px', borderLeft: '1px solid #000000' }}></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* PRINT PACTS */}
-            <div>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Pacts & Dedications</h3>
+            <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)', flex: 1 }}>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Pacts & Dedications</h3>
               {pacts.length === 0 || (pacts.length === 1 && !pacts[0].entity) ? (
-                 <div style={{ fontSize: '10px', fontStyle: 'italic', textAlign: 'center', padding: '8px', border: '2px solid #000000' }}>No Pacts Forged</div>
+                 <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', fontStyle: 'italic', color: '#666' }}>No Pacts Forged</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div>
                   {pacts.filter(p => p.entity).map((p, i) => (
-                    <div key={i} style={{ border: '2px solid #000000', padding: '4px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #000000', marginBottom: '4px', paddingBottom: '2px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>{p.entity}</span>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold' }}>POW: {p.dedicatedPow}</span>
+                    <div key={i} style={{ padding: '8px', borderBottom: '1px solid #000000' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>{p.entity}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>POW Dedicated: {p.dedicatedPow}</span>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '9px' }}>
-                        <div><strong>Gifts:</strong> {p.gifts || "None"}</div>
-                        <div><strong>Compulsions:</strong> {p.compulsions || "None"}</div>
+                      <div style={{ fontSize: '10px', lineHeight: '1.4' }}>
+                        <div><strong style={{ textTransform: 'uppercase' }}>Gifts:</strong> {p.gifts || "None"}</div>
+                        <div><strong style={{ textTransform: 'uppercase' }}>Compulsions:</strong> {p.compulsions || "None"}</div>
                       </div>
                     </div>
                   ))}
@@ -682,75 +708,146 @@ export default function CharacterBuilder() {
             </div>
 
           </div>
+        </div>
 
-          {/* PRINT COL 2 & 3 */}
-          <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
-            <div style={{ border: '2px solid #000000' }}>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Skills</h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px', padding: '8px' }}>
-                <div>
-                  <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Standard Skills</h4>
-                  <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-                    <tbody>
-                      {standardSkillKeys.map(k => (
-                        <tr key={k}>
-                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{k}</td>
-                          <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getStandardBase(k))}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+        {/* PRINT WEAPONS & COMBAT STYLES ROW */}
+        <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)', marginBottom: '24px' }}>
+          <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Weapons & Armour</h3>
+          <table style={{ width: '100%', fontSize: '11px', textAlign: 'center', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #000000' }}>
+                <th style={{ padding: '6px', textAlign: 'left', borderRight: '1px solid #000000' }}>Weapon / Style</th>
+                <th style={{ padding: '6px', borderRight: '1px solid #000000' }}>Damage</th>
+                <th style={{ padding: '6px', borderRight: '1px solid #000000' }}>Size / Reach</th>
+                <th style={{ padding: '6px', borderRight: '1px solid #000000' }}>Effects</th>
+                <th style={{ padding: '6px' }}>AP / HP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...Array(4)].map((_, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #000000' }}>
+                  <td style={{ padding: '12px', borderRight: '1px solid #000000' }}></td>
+                  <td style={{ padding: '12px', borderRight: '1px solid #000000' }}></td>
+                  <td style={{ padding: '12px', borderRight: '1px solid #000000' }}></td>
+                  <td style={{ padding: '12px', borderRight: '1px solid #000000' }}></td>
+                  <td style={{ padding: '12px' }}></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-                <div>
-                  <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Professional & Combat Skills</h4>
-                  <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-                    <tbody>
-                      {mundaneProfSkills.length === 0 && <tr><td style={{ fontStyle: 'italic', padding: '2px 0' }}>None Learned</td></tr>}
-                      {mundaneProfSkills.map(k => (
-                        <tr key={k}>
-                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{displaySkillName(k)}</td>
-                          <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getProfSkillBase(k, characteristics))}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '16px', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Magic & Runic Skills</h4>
-                  <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
-                    <tbody>
-                      {magicProfSkills.length === 0 && <tr><td style={{ fontStyle: 'italic', padding: '2px 0' }}>None Learned</td></tr>}
-                      {magicProfSkills.map(k => (
-                        <tr key={k}>
-                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{displaySkillName(k)}</td>
-                          <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getProfSkillBase(k, characteristics))}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ fontSize: '8px', fontStyle: 'italic', marginTop: '8px', textAlign: 'right' }}>Magic Cap: High Speech ({highSpeechTotal}%)</div>
-                </div>
-              </div>
+        {/* PRINT SKILLS SECTION */}
+        <div style={{ border: '2px solid #000000', backgroundColor: 'rgba(255,255,255,0.7)', marginBottom: '24px' }}>
+          <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Skills</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '30px', padding: '16px' }}>
+            {/* Standard Skills */}
+            <div>
+              <h4 style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '2px solid #000000' }}>Standard Skills</h4>
+              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #000000' }}>
+                    <th style={{ textAlign: 'left', paddingBottom: '4px' }}>Skill</th>
+                    <th style={{ textAlign: 'center', paddingBottom: '4px' }}>Base</th>
+                    <th style={{ textAlign: 'center', paddingBottom: '4px' }}>C/Ca/B</th>
+                    <th style={{ textAlign: 'right', paddingBottom: '4px' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {standardSkillKeys.map((k, i) => {
+                    const base = getStandardBase(k);
+                    const s = skillSpends[k] || { culture: 0, career: 0, bonus: 0 };
+                    return (
+                      <tr key={k} style={{ borderBottom: '1px dotted #000000', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.05)' }}>
+                        <td style={{ padding: '4px 0' }}>{k}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'center', color: '#666' }}>{base}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'center', color: '#666' }}>{s.culture}/{s.career}/{s.bonus}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>{base + s.culture + s.career + s.bonus}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            <div style={{ border: '2px solid #000000', padding: '8px', flex: 1 }}>
-               <h3 style={{ borderBottom: '2px solid #000000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', marginBottom: '8px', paddingBottom: '4px', letterSpacing: '0.1em' }}>Background & Connections</h3>
-               <p style={{ fontSize: '12px', fontStyle: 'italic', marginBottom: '8px', margin: 0 }}>{background}</p>
-               <p style={{ fontSize: '10px', lineHeight: '1.5', whiteSpace: 'pre-wrap', margin: 0, marginTop: '8px' }}>{connections || "No familial or allied connections recorded."}</p>
-            </div>
+            {/* Professional & Magic Skills */}
+            <div>
+              <h4 style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '2px solid #000000' }}>Professional & Combat Skills</h4>
+              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #000000' }}>
+                    <th style={{ textAlign: 'left', paddingBottom: '4px' }}>Skill</th>
+                    <th style={{ textAlign: 'center', paddingBottom: '4px' }}>Base</th>
+                    <th style={{ textAlign: 'center', paddingBottom: '4px' }}>C/Ca/B</th>
+                    <th style={{ textAlign: 'right', paddingBottom: '4px' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mundaneProfSkills.length === 0 && <tr><td colSpan={4} style={{ fontStyle: 'italic', padding: '4px 0', textAlign: 'center' }}>None Learned</td></tr>}
+                  {mundaneProfSkills.map((k, i) => {
+                    const base = getProfSkillBase(k, characteristics);
+                    const s = skillSpends[k] || { culture: 0, career: 0, bonus: 0 };
+                    return (
+                      <tr key={k} style={{ borderBottom: '1px dotted #000000', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.05)' }}>
+                        <td style={{ padding: '4px 0' }}>{displaySkillName(k)}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'center', color: '#666' }}>{base}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'center', color: '#666' }}>{s.culture}/{s.career}/{s.bonus}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>{base + s.culture + s.career + s.bonus}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-            <div style={{ border: '2px solid #000000', padding: '8px', flex: 1 }}>
-               <h3 style={{ borderBottom: '2px solid #000000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', marginBottom: '8px', paddingBottom: '4px', letterSpacing: '0.1em' }}>Equipment, Armour & Grimoires</h3>
-               <p style={{ fontSize: '10px', lineHeight: '1.5', whiteSpace: 'pre-wrap', margin: 0 }}>{equipment || "No equipment recorded."}</p>
+              <h4 style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '8px', borderBottom: '2px solid #000000' }}>Magic & Runic Arts</h4>
+              <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #000000' }}>
+                    <th style={{ textAlign: 'left', paddingBottom: '4px' }}>Skill</th>
+                    <th style={{ textAlign: 'center', paddingBottom: '4px' }}>Base</th>
+                    <th style={{ textAlign: 'center', paddingBottom: '4px' }}>C/Ca/B</th>
+                    <th style={{ textAlign: 'right', paddingBottom: '4px' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {magicProfSkills.length === 0 && <tr><td colSpan={4} style={{ fontStyle: 'italic', padding: '4px 0', textAlign: 'center' }}>None Learned</td></tr>}
+                  {magicProfSkills.map((k, i) => {
+                    const base = getProfSkillBase(k, characteristics);
+                    const s = skillSpends[k] || { culture: 0, career: 0, bonus: 0 };
+                    return (
+                      <tr key={k} style={{ borderBottom: '1px dotted #000000', backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.05)' }}>
+                        <td style={{ padding: '4px 0' }}>{displaySkillName(k)}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'center', color: '#666' }}>{base}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'center', color: '#666' }}>{s.culture}/{s.career}/{s.bonus}</td>
+                        <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px' }}>{base + s.culture + s.career + s.bonus}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div style={{ fontSize: '10px', fontStyle: 'italic', marginTop: '8px', textAlign: 'right', fontWeight: 'bold' }}>Sorcery Cap: High Speech ({highSpeechTotal}%)</div>
             </div>
-
           </div>
         </div>
 
-        <footer style={{ marginTop: '16px', textAlign: 'center', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 'bold', color: '#000000' }}>
-          Moorcock's Young Kingdoms • Generated via Ultimate Mythras 14-Step Builder
+        {/* PRINT LORE & EQUIPMENT */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{ border: '2px solid #000000', padding: '16px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+              <h3 style={{ borderBottom: '2px solid #000000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', marginBottom: '8px', paddingBottom: '4px', letterSpacing: '0.1em' }}>Background & Connections</h3>
+              <p style={{ fontSize: '12px', fontStyle: 'italic', marginBottom: '12px', marginTop: 0 }}>{background}</p>
+              <p style={{ fontSize: '11px', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0 }}>{connections || "No familial or allied connections recorded."}</p>
+          </div>
+
+          <div style={{ border: '2px solid #000000', padding: '16px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+              <h3 style={{ borderBottom: '2px solid #000000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '11px', marginBottom: '8px', paddingBottom: '4px', letterSpacing: '0.1em' }}>Equipment & General Gear</h3>
+              <p style={{ fontSize: '11px', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0 }}>{equipment || "No equipment recorded."}</p>
+          </div>
+        </div>
+
+        {/* PRINT FOOTER */}
+        <footer style={{ marginTop: '30px', textAlign: 'center', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 'bold', color: '#000000' }}>
+          Moorcock's Young Kingdoms • Generated via Ultimate Mythras Builder
         </footer>
 
       </div>
