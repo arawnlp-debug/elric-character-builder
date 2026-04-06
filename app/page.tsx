@@ -23,6 +23,14 @@ interface SkillSpend {
   bonus: number;
 }
 
+interface Pact {
+  id: number;
+  entity: string;
+  dedicatedPow: number;
+  gifts: string;
+  compulsions: string;
+}
+
 const standardSkillKeys = [
   "Athletics", "Boating", "Brawn", "Conceal", "Customs", "Dance", 
   "Deceit", "Drive", "Endurance", "Evade", "FirstAid", "Influence", 
@@ -43,6 +51,11 @@ const getProfSkillBase = (skillName: string, chars: Characteristics) => {
   if (name.includes('trance') || name.includes('dreamtheft')) return chars.POW * 2;
   if (name.includes('combat style')) return chars.STR + chars.DEX;
   return chars.INT * 2; // Fallback
+};
+
+const isMagicSkill = (skillName: string) => {
+  const n = skillName.toLowerCase();
+  return ['rune casting', 'summoning', 'command', 'pact', 'witch sight', 'devotion', 'trance', 'binding', 'dreamtheft'].some(m => n.includes(m));
 };
 
 // --- DICE ROLLER LOGIC ---
@@ -76,13 +89,10 @@ export default function CharacterBuilder() {
   const [selectedCulture, setSelectedCulture] = useState("");
   const [selectedCareer, setSelectedCareer] = useState("");
   const [passions, setPassions] = useState([{ id: 1, target: "Melniboné", val: 0 }]);
-  const [dedicatedMPs, setDedicatedMPs] = useState(0);
+  const [pacts, setPacts] = useState<Pact[]>([{ id: 1, entity: "", dedicatedPow: 0, gifts: "", compulsions: "" }]);
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
   
-  // Custom Runes & Skills
-  const [rune1, setRune1] = useState("Rune of...");
-  const [rune2, setRune2] = useState("Rune of...");
-  const [rune3, setRune3] = useState("Rune of...");
+  // Custom Skills
   const [customSkills, setCustomSkills] = useState<string[]>([]);
   const [newSkillBase, setNewSkillBase] = useState("Lore");
   const [newSkillSpec, setNewSkillSpec] = useState("");
@@ -121,10 +131,25 @@ export default function CharacterBuilder() {
   const availableProfSkills = [...new Set([...cultureProfs, ...careerProfs])].sort();
   const allProfSkills = [...new Set([...availableProfSkills, ...customSkills])].sort();
 
+  // Split skills into Mundane and Magic
+  const mundaneProfSkills = allProfSkills.filter(s => !isMagicSkill(s));
+  const magicProfSkills = allProfSkills.filter(s => isMagicSkill(s));
+
+  // Determine actual Hobby count
+  const hobbyCount = customSkills.filter(s => {
+    const baseMatch = s.match(/^([^(]+)/);
+    const base = baseMatch ? baseMatch[1].trim() : s;
+    return !availableProfSkills.includes(base) && !availableProfSkills.includes(s);
+  }).length;
+  const hobbyMax = age >= 28 ? 2 : 1;
+
   const charPoints = Object.values(characteristics).reduce((a, b) => a + b, 0);
   const cultureSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.culture || 0), 0);
   const careerSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.career || 0), 0);
   const bonusSpent = Object.values(skillSpends).reduce((acc, s) => acc + (s.bonus || 0), 0);
+
+  // AUTOMATED PACT DEDICATION MATH
+  const dedicatedMPs = pacts.reduce((sum, p) => sum + (Number(p.dedicatedPow) || 0), 0);
 
   // Mythras Derived Combat Stats
   const hpBase = Math.ceil((characteristics.CON + characteristics.SIZ) / 5);
@@ -217,7 +242,6 @@ export default function CharacterBuilder() {
       try {
         if (!printSheetRef.current) return;
         
-        // Temporarily display the hidden sheet for html2canvas to capture it
         printSheetRef.current.style.display = 'block';
 
         const canvas = await html2canvas(printSheetRef.current, { 
@@ -227,7 +251,6 @@ export default function CharacterBuilder() {
         
         const imgData = canvas.toDataURL('image/png');
         
-        // Portrait Orientation for Classic Sheet Feel
         const pdf = new jsPDF({
           orientation: 'portrait',
           unit: 'px',
@@ -241,43 +264,42 @@ export default function CharacterBuilder() {
         console.error("Failed to export PDF", error);
         alert("There was an error generating the PDF.");
       } finally {
-        if (printSheetRef.current) printSheetRef.current.style.display = 'none'; // Hide it again
+        if (printSheetRef.current) printSheetRef.current.style.display = 'none';
         setIsExporting(false);
       }
     }, 150);
   };
 
-  // Helper for rendering skills safely in the print view
-  const getTotalSkill = (name: string, base: number) => {
-    const s = skillSpends[name] || { culture: 0, career: 0, bonus: 0 };
+  const getTotalSkill = (skillName: string, base: number) => {
+    const s = skillSpends[skillName] || { culture: 0, career: 0, bonus: 0 };
     return base + s.culture + s.career + s.bonus;
   };
 
   // --- BUILDER UI (Interactive Component) ---
-  const BuilderSkillRow = ({ name, base, type }: { name: string, base: number, type: string }) => {
-    const s = skillSpends[name] || { culture: 0, career: 0, bonus: 0 };
+  const BuilderSkillRow = ({ skillName, base, type }: { skillName: string, base: number, type: string }) => {
+    const s = skillSpends[skillName] || { culture: 0, career: 0, bonus: 0 };
     const total = base + s.culture + s.career + s.bonus;
-    const isMagic = ["Summoning Ritual", "Command", "Rune Casting"].includes(name);
+    const isMagic = isMagicSkill(skillName);
     const overCap = isMagic && total > highSpeechTotal;
-    const isCustom = customSkills.includes(name);
-    const canCulture = type === "standard" || cultureProfs.includes(name) || type === "style" || type === "magic" || isCustom;
-    const canCareer = careerStandards.includes(name) || careerProfs.includes(name) || type === "style" || type === "magic" || isCustom;
+    const isCustom = customSkills.includes(skillName);
+    const canCulture = type === "standard" || cultureProfs.includes(skillName) || type === "style" || isCustom || isMagic;
+    const canCareer = careerStandards.includes(skillName) || careerProfs.includes(skillName) || type === "style" || isCustom || isMagic;
 
     return (
       <tr className="border-b text-[10px]" style={{ borderColor: '#d1d5db', backgroundColor: overCap ? '#fee2e2' : 'transparent' }}>
         <td className="p-1 font-bold flex justify-between items-center" style={{ color: overCap ? '#dc2626' : '#000000' }}>
-          <span>{name}</span>
-          {isCustom && <button onClick={() => removeCustomSkill(name)} className="font-bold px-1 ml-2 opacity-50 hover:opacity-100" style={{ color: '#ef4444' }} title="Remove Hobby Skill">×</button>}
+          <span>{skillName}</span>
+          {isCustom && <button onClick={() => removeCustomSkill(skillName)} className="font-bold px-1 ml-2 opacity-50 hover:opacity-100" style={{ color: '#ef4444' }} title="Remove Added Skill">×</button>}
         </td>
         <td className="text-center" style={{ color: '#6b7280' }}>{base}</td>
         <td className="text-center border-l" style={{ backgroundColor: '#eff6ff', borderColor: '#e5e7eb' }}>
-            <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCulture} value={s.culture} onChange={e => handleSkillChange(name, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+            <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCulture} value={s.culture} onChange={e => handleSkillChange(skillName, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
         </td>
         <td className="text-center border-l" style={{ backgroundColor: '#f0fdf4', borderColor: '#e5e7eb' }}>
-            <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCareer} value={s.career} onChange={e => handleSkillChange(name, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+            <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" disabled={!canCareer} value={s.career} onChange={e => handleSkillChange(skillName, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
         </td>
         <td className="text-center border-l" style={{ backgroundColor: '#faf5ff', borderColor: '#e5e7eb' }}>
-            <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={s.bonus} onChange={e => handleSkillChange(name, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
+            <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={s.bonus} onChange={e => handleSkillChange(skillName, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
         </td>
         <td className="text-center font-bold border-l" style={{ borderColor: '#e5e7eb', color: '#000000' }}>{total}%</td>
       </tr>
@@ -287,7 +309,7 @@ export default function CharacterBuilder() {
   return (
     <>
       {/* -------------------------------------------------------------
-          1. INTERACTIVE BUILDER VIEW (What the user interacts with)
+          1. INTERACTIVE BUILDER VIEW
           ------------------------------------------------------------- */}
       <main className="min-h-screen p-4 font-serif" style={{ backgroundColor: "#ece0c8", backgroundImage: `url(${parchmentBg})`, color: '#000000', display: isExporting ? 'none' : 'block' }}>
         <div className="max-w-7xl mx-auto flex justify-end mb-2">
@@ -385,7 +407,7 @@ export default function CharacterBuilder() {
                   <div className="flex justify-between border-b" style={{ borderColor: '#f3f4f6' }}><span>Luck Points:</span> <strong>{luck}</strong></div>
                   <div className="flex justify-between border-b" style={{ borderColor: '#f3f4f6' }}><span>Movement:</span> <strong>{movement}</strong></div>
                   <div className="flex justify-between border-b font-black" style={{ borderColor: '#f3f4f6', color: '#1e3a8a' }}><span>Tenacity (POW):</span> <strong>{characteristics.POW}</strong></div>
-                  <div className="flex justify-between"><span>Magic Points:</span> <strong>{characteristics.POW - dedicatedMPs}</strong></div>
+                  <div className="flex justify-between"><span>Magic Pts (Available):</span> <strong>{characteristics.POW - dedicatedMPs}</strong></div>
                 </div>
                 {getAgeingText() && (
                   <div className="mt-2 p-1 text-[8px] font-bold uppercase tracking-wide text-center" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #f87171' }}>
@@ -405,6 +427,28 @@ export default function CharacterBuilder() {
                 ))}
                 <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] w-full py-1 mt-1 uppercase" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>+ Add Passion</button>
               </div>
+
+              {/* NEW: PACTS SECTION */}
+              <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#fdf2f8' }}>
+                <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#831843' }}>Pacts & Dedications</h2>
+                {pacts.map((p, idx) => (
+                  <div key={p.id} className="mb-2 border-b border-dashed pb-2" style={{ borderColor: '#d1d5db' }}>
+                    <div className="flex gap-1 mb-1 items-center">
+                      <input className="text-[10px] border flex-1 p-1 outline-none" placeholder="Higher Power (e.g. Arioch)..." value={p.entity} onChange={e => { const n = [...pacts]; n[idx].entity = e.target.value; setPacts(n); }} style={{ backgroundColor: '#ffffff', borderColor: '#d1d5db', color: '#000000' }} />
+                      <span className="text-[8px] font-bold flex items-center gap-1" style={{ color: '#000000' }}>
+                        POW: <input type="number" min="0" className="w-8 border p-1 outline-none text-center" value={p.dedicatedPow} onChange={e => { const n = [...pacts]; n[idx].dedicatedPow = parseInt(e.target.value) || 0; setPacts(n); }} style={{ backgroundColor: '#ffffff', borderColor: '#d1d5db', color: '#000000' }} />
+                      </span>
+                      <button onClick={() => setPacts(pacts.filter(x => x.id !== p.id))} className="font-bold text-xs" style={{ color: '#dc2626', cursor: 'pointer' }}>×</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <input className="text-[9px] border p-1 outline-none" placeholder="Gifts..." value={p.gifts} onChange={e => { const n = [...pacts]; n[idx].gifts = e.target.value; setPacts(n); }} style={{ backgroundColor: '#ffffff', borderColor: '#d1d5db', color: '#000000' }} />
+                      <input className="text-[9px] border p-1 outline-none" placeholder="Compulsions..." value={p.compulsions} onChange={e => { const n = [...pacts]; n[idx].compulsions = e.target.value; setPacts(n); }} style={{ backgroundColor: '#ffffff', borderColor: '#d1d5db', color: '#000000' }} />
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => setPacts([...pacts, { id: Date.now(), entity: "", dedicatedPow: 0, gifts: "", compulsions: "" }])} className="text-[8px] w-full py-1 uppercase font-bold tracking-widest" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>+ Add Pact</button>
+              </div>
+
             </section>
 
             {/* COLUMN 3 & 4: SKILLS & MAGIC TABLE */}
@@ -421,48 +465,35 @@ export default function CharacterBuilder() {
                     <tr><th className="p-1">Skill</th><th>Base</th><th className="text-center" style={{ backgroundColor: '#eff6ff' }}>C</th><th className="text-center" style={{ backgroundColor: '#f0fdf4' }}>J</th><th className="text-center" style={{ backgroundColor: '#faf5ff' }}>B</th><th className="text-center font-black">Total</th></tr>
                   </thead>
                   <tbody>
-                    {standardSkillKeys.map(k => <BuilderSkillRow key={k} name={k} base={getStandardBase(k)} type="standard" />)}
-                    <tr className="text-[9px] font-bold text-center uppercase tracking-widest" style={{ backgroundColor: '#f3f4f6', color: '#000000' }}><td colSpan={6} className="py-1">Professional Skills</td></tr>
-                    {allProfSkills.map(k => <BuilderSkillRow key={k} name={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
-                    <tr className="text-[9px] font-bold text-center uppercase tracking-widest" style={{ backgroundColor: '#fef2f2', color: '#7f1d1d' }}><td colSpan={6} className="py-1">Magic & Runic Affinities</td></tr>
-                    <BuilderSkillRow name="Folk Magic" base={characteristics.POW + characteristics.CHA + 30} type="magic" />
+                    {standardSkillKeys.map(k => <BuilderSkillRow key={k} skillName={k} base={getStandardBase(k)} type="standard" />)}
                     
-                    {/* Dynamic Rune Rows for Builder */}
-                    {[rune1, rune2, rune3].map((r, idx) => {
-                       const bases = [30, 20, 10];
-                       const base = characteristics.POW + characteristics.POW + bases[idx];
-                       const setter = idx === 0 ? setRune1 : idx === 1 ? setRune2 : setRune3;
-                       const s = skillSpends[r] || { culture: 0, career: 0, bonus: 0 };
-                       return (
-                        <tr key={idx} className="border-b text-[10px]" style={{ borderColor: '#d1d5db' }}>
-                          <td className="p-1 font-bold">
-                            <input className="bg-transparent outline-none font-bold w-full" value={r} onChange={e => setter(e.target.value)} style={{ color: '#000000' }} />
-                          </td>
-                          <td className="text-center" style={{ color: '#6b7280' }}>{base}</td>
-                          <td className="text-center border-l" style={{ backgroundColor: '#eff6ff', borderColor: '#e5e7eb' }}>
-                              <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={s.culture} onChange={e => handleSkillChange(r, 'culture', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
-                          </td>
-                          <td className="text-center border-l" style={{ backgroundColor: '#f0fdf4', borderColor: '#e5e7eb' }}>
-                              <input type="number" step={5} min="0" max="15" className="w-8 text-center bg-transparent focus:outline-none" value={s.career} onChange={e => handleSkillChange(r, 'career', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
-                          </td>
-                          <td className="text-center border-l" style={{ backgroundColor: '#faf5ff', borderColor: '#e5e7eb' }}>
-                              <input type="number" step={1} min="0" max={bonusSpendMax} className="w-8 text-center bg-transparent focus:outline-none" value={s.bonus} onChange={e => handleSkillChange(r, 'bonus', parseInt(e.target.value) || 0)} style={{ color: '#000000' }} />
-                          </td>
-                          <td className="text-center font-bold border-l" style={{ borderColor: '#e5e7eb', color: '#000000' }}>{base + s.culture + s.career + s.bonus}%</td>
-                        </tr>
-                       )
-                    })}
+                    <tr className="text-[9px] font-bold text-center uppercase tracking-widest" style={{ backgroundColor: '#f3f4f6', color: '#000000' }}><td colSpan={6} className="py-1">Professional Skills</td></tr>
+                    {mundaneProfSkills.length === 0 && <tr><td colSpan={6} className="text-center italic text-[8px] py-1 text-gray-500">None Learned</td></tr>}
+                    {mundaneProfSkills.map(k => <BuilderSkillRow key={k} skillName={k} base={getProfSkillBase(k, characteristics)} type="prof" />)}
+                    
+                    <tr className="text-[9px] font-bold text-center uppercase tracking-widest" style={{ backgroundColor: '#fef2f2', color: '#7f1d1d' }}><td colSpan={6} className="py-1">Magic & Runic Skills</td></tr>
+                    {magicProfSkills.length === 0 && <tr><td colSpan={6} className="text-center italic text-[8px] py-1 text-gray-500">No Sorcery or Pacts Learned</td></tr>}
+                    {magicProfSkills.map(k => <BuilderSkillRow key={k} skillName={k} base={getProfSkillBase(k, characteristics)} type="magic" />)}
                   </tbody>
                 </table>
               </div>
 
               <div className="p-2 border-t text-[9px] flex gap-2 items-center" style={{ borderColor: '#000000', backgroundColor: '#f9fafb' }}>
-                <span className="font-bold uppercase tracking-wider">Hobby ({customSkills.length} / {age >= 28 ? 2 : 1}):</span>
+                <span className="font-bold uppercase tracking-wider">Hobby/Magic ({hobbyCount} / {hobbyMax}):</span>
                 <select className="border p-1 bg-white outline-none" value={newSkillBase} onChange={e => setNewSkillBase(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }}>
-                  <option>Lore</option><option>Craft</option><option>Art</option><option>Language</option><option>Combat Style</option><option>Custom Professional</option>
+                  <option>Lore</option>
+                  <option>Craft</option>
+                  <option>Art</option>
+                  <option>Language</option>
+                  <option>Combat Style</option>
+                  <option>Rune Casting</option>
+                  <option>Summoning Ritual</option>
+                  <option>Command</option>
+                  <option>Pact</option>
+                  <option>Custom Professional</option>
                 </select>
-                <input className="border p-1 flex-1 outline-none" placeholder="e.g. History, Blacksmithing..." value={newSkillSpec} onChange={e => setNewSkillSpec(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }} />
-                <button onClick={handleAddCustomSkill} disabled={customSkills.length >= (age >= 28 ? 2 : 1)} className="px-3 py-1 font-bold tracking-widest text-white uppercase disabled:opacity-30 disabled:cursor-not-allowed" style={{ backgroundColor: '#000000', cursor: 'pointer' }}>Add</button>
+                <input className="border p-1 flex-1 outline-none" placeholder="e.g. Fire, Demon, Water..." value={newSkillSpec} onChange={e => setNewSkillSpec(e.target.value)} style={{ borderColor: '#d1d5db', color: '#000000' }} />
+                <button onClick={handleAddCustomSkill} disabled={hobbyCount >= hobbyMax} className="px-3 py-1 font-bold tracking-widest text-white uppercase disabled:opacity-30 disabled:cursor-not-allowed" style={{ backgroundColor: '#000000', cursor: 'pointer' }}>Add</button>
               </div>
             </section>
           </div>
@@ -474,17 +505,9 @@ export default function CharacterBuilder() {
           ------------------------------------------------------------- */}
       <div 
         ref={printSheetRef} 
-        style={{ 
-          display: 'none', 
-          width: '900px', 
-          padding: '30px', 
-          backgroundColor: '#ffffff', 
-          color: '#000000', 
-          fontFamily: 'serif' 
-        }}
+        style={{ display: 'none', width: '900px', padding: '30px', backgroundColor: '#ffffff', color: '#000000', fontFamily: 'serif' }}
       >
-        {/* PRINT HEADER */}
-        <header className="mb-6 flex justify-between items-center" style={{ borderBottom: '6px solid #000000', paddingBottom: '8px' }}>
+        <header style={{ borderBottom: '6px solid #000000', paddingBottom: '8px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ color: '#000000', margin: 0, fontSize: '48px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em' }}>ELRIC!</h1>
             <div style={{ color: '#000000', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>RuneQuest / Mythras System Sheet</div>
@@ -501,7 +524,6 @@ export default function CharacterBuilder() {
           </div>
         </header>
 
-        {/* PRINT CORE IDENTITY */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px', marginBottom: '24px', padding: '16px', border: '4px solid #000000' }}>
             <div style={{ borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Race:</span> {race}</div>
             <div style={{ borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Age:</span> {age} ({ageCategory})</div>
@@ -511,13 +533,10 @@ export default function CharacterBuilder() {
             <div style={{ gridColumn: 'span 2', borderBottom: '1px dashed #000000', paddingBottom: '2px' }}><span style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: 'bold' }}>Starting Money:</span> {money}</div>
         </div>
 
-        {/* PRINT 3-COLUMN STRUCTURE */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '24px' }}>
           
-          {/* PRINT COL 1: STATS & ATTRIBUTES */}
+          {/* PRINT COL 1 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
-            {/* Characteristics */}
             <div>
               <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Characteristics</h3>
               <table style={{ width: '100%', fontSize: '14px', border: '2px solid #000000', borderCollapse: 'collapse' }}>
@@ -532,7 +551,6 @@ export default function CharacterBuilder() {
               </table>
             </div>
 
-            {/* Attributes */}
             <div>
               <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Derived Attributes</h3>
               <table style={{ width: '100%', fontSize: '14px', border: '2px solid #000000', borderCollapse: 'collapse' }}>
@@ -549,9 +567,8 @@ export default function CharacterBuilder() {
               </table>
             </div>
 
-            {/* Hit Locations */}
             <div>
-              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Hit Locations & Armour</h3>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Hit Locations</h3>
               <table style={{ width: '100%', fontSize: '10px', textAlign: 'center', border: '2px solid #000000', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -573,7 +590,6 @@ export default function CharacterBuilder() {
               </table>
             </div>
 
-            {/* Passions */}
             <div>
               <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Passions</h3>
               <table style={{ width: '100%', fontSize: '14px', border: '2px solid #000000', borderCollapse: 'collapse' }}>
@@ -594,17 +610,38 @@ export default function CharacterBuilder() {
               </table>
             </div>
 
+            {/* PRINT PACTS */}
+            <div>
+              <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0 0 8px 0', letterSpacing: '0.1em' }}>Pacts & Dedications</h3>
+              {pacts.length === 0 || (pacts.length === 1 && !pacts[0].entity) ? (
+                 <div style={{ fontSize: '10px', fontStyle: 'italic', textAlign: 'center', padding: '8px', border: '2px solid #000000' }}>No Pacts Forged</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {pacts.filter(p => p.entity).map((p, i) => (
+                    <div key={i} style={{ border: '2px solid #000000', padding: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #000000', marginBottom: '4px', paddingBottom: '2px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>{p.entity}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold' }}>POW: {p.dedicatedPow}</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '9px' }}>
+                        <div><strong>Gifts:</strong> {p.gifts || "None"}</div>
+                        <div><strong>Compulsions:</strong> {p.compulsions || "None"}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* PRINT COL 2 & 3: SKILLS & GEAR */}
+          {/* PRINT COL 2 & 3 */}
           <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {/* Skills Table */}
             <div style={{ border: '2px solid #000000' }}>
               <h3 style={{ backgroundColor: '#000000', color: '#ffffff', textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', padding: '4px 0', margin: '0', letterSpacing: '0.1em' }}>Skills</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px', padding: '8px' }}>
-                {/* Standard Skills Column */}
                 <div>
                   <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Standard Skills</h4>
                   <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
@@ -619,12 +656,12 @@ export default function CharacterBuilder() {
                   </table>
                 </div>
 
-                {/* Professional Skills Column */}
                 <div>
                   <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Professional & Combat Skills</h4>
                   <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
                     <tbody>
-                      {allProfSkills.map(k => (
+                      {mundaneProfSkills.length === 0 && <tr><td style={{ fontStyle: 'italic', padding: '2px 0' }}>None Learned</td></tr>}
+                      {mundaneProfSkills.map(k => (
                         <tr key={k}>
                           <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{k}</td>
                           <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getProfSkillBase(k, characteristics))}%</td>
@@ -633,23 +670,16 @@ export default function CharacterBuilder() {
                     </tbody>
                   </table>
 
-                  <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '16px', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Magic & Runes</h4>
+                  <h4 style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase', marginTop: '16px', marginBottom: '4px', borderBottom: '1px solid #000000' }}>Magic & Runic Skills</h4>
                   <table style={{ width: '100%', fontSize: '10px', borderCollapse: 'collapse' }}>
                     <tbody>
-                      <tr>
-                        <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>Folk Magic</td>
-                        <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill("Folk Magic", characteristics.POW + characteristics.CHA + 30)}%</td>
-                      </tr>
-                      {[rune1, rune2, rune3].map((r, idx) => {
-                         const bases = [30, 20, 10];
-                         const base = characteristics.POW + characteristics.POW + bases[idx];
-                         return (
-                          <tr key={`print-rune-${idx}`}>
-                            <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{r.includes("...") ? "__________________" : r}</td>
-                            <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(r, base)}%</td>
-                          </tr>
-                         );
-                      })}
+                      {magicProfSkills.length === 0 && <tr><td style={{ fontStyle: 'italic', padding: '2px 0' }}>None Learned</td></tr>}
+                      {magicProfSkills.map(k => (
+                        <tr key={k}>
+                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{k}</td>
+                          <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getProfSkillBase(k, characteristics))}%</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                   <div style={{ fontSize: '8px', fontStyle: 'italic', marginTop: '8px', textAlign: 'right' }}>Magic Cap: High Speech ({highSpeechTotal}%)</div>
@@ -657,14 +687,12 @@ export default function CharacterBuilder() {
               </div>
             </div>
 
-            {/* Background & Connections Box */}
             <div style={{ border: '2px solid #000000', padding: '8px', flex: 1 }}>
                <h3 style={{ borderBottom: '2px solid #000000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', marginBottom: '8px', paddingBottom: '4px', letterSpacing: '0.1em' }}>Background & Connections</h3>
                <p style={{ fontSize: '12px', fontStyle: 'italic', marginBottom: '8px', margin: 0 }}>{background}</p>
                <p style={{ fontSize: '10px', lineHeight: '1.5', whiteSpace: 'pre-wrap', margin: 0, marginTop: '8px' }}>{connections || "No familial or allied connections recorded."}</p>
             </div>
 
-            {/* Equipment Box */}
             <div style={{ border: '2px solid #000000', padding: '8px', flex: 1 }}>
                <h3 style={{ borderBottom: '2px solid #000000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '10px', marginBottom: '8px', paddingBottom: '4px', letterSpacing: '0.1em' }}>Equipment, Armour & Grimoires</h3>
                <p style={{ fontSize: '10px', lineHeight: '1.5', whiteSpace: 'pre-wrap', margin: 0 }}>{equipment || "No equipment recorded."}</p>
@@ -673,7 +701,6 @@ export default function CharacterBuilder() {
           </div>
         </div>
 
-        {/* PRINT FOOTER */}
         <footer style={{ marginTop: '16px', textAlign: 'center', fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 'bold', color: '#000000' }}>
           Moorcock's Young Kingdoms • Generated via Ultimate Mythras 14-Step Builder
         </footer>
