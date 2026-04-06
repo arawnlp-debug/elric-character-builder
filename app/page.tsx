@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import culturesData from '../data/cultures.json';
 import careersData from '../data/careers.json';
 import stylesData from '../data/combatStyles.json';
@@ -53,6 +55,9 @@ const backgroundEvents = [
 ];
 
 export default function CharacterBuilder() {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
   // --- STATE ---
   const [name, setName] = useState("");
   const [race, setRace] = useState("Human");
@@ -150,6 +155,51 @@ export default function CharacterBuilder() {
     }));
   };
 
+  // --- PDF EXPORT LOGIC ---
+  const handleExportPDF = async () => {
+    if (!sheetRef.current) return;
+    setIsExporting(true);
+    
+    try {
+      // Temporarily expand scrollable areas for the screenshot
+      const scrollableElements = sheetRef.current.querySelectorAll('.overflow-y-auto');
+      scrollableElements.forEach(el => {
+        (el as HTMLElement).style.maxHeight = 'none';
+        (el as HTMLElement).style.overflow = 'visible';
+      });
+
+      const canvas = await html2canvas(sheetRef.current, { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#ece0c8'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Setup landscape PDF based on canvas dimensions
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`${name || 'Elric_Character'}_Sheet.pdf`);
+
+      // Restore scrollable areas
+      scrollableElements.forEach(el => {
+        (el as HTMLElement).style.maxHeight = '';
+        (el as HTMLElement).style.overflow = '';
+      });
+
+    } catch (error) {
+      console.error("Failed to export PDF", error);
+      alert("There was an error generating the PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const SkillRow = ({ name, base, type }: { name: string, base: number, type: string }) => {
     const s = skillSpends[name] || { culture: 0, career: 0, bonus: 0 };
     const total = base + s.culture + s.career + s.bonus;
@@ -182,7 +232,17 @@ export default function CharacterBuilder() {
       className="min-h-screen p-4 font-serif text-black selection:bg-red-200"
       style={{ backgroundColor: "#ece0c8", backgroundImage: `url(${parchmentBg})` }}
     >
-      <div className="max-w-7xl mx-auto bg-white/90 border-4 border-black shadow-[0_0_50px_rgba(0,0,0,0.2)] p-6 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto flex justify-end mb-2">
+        <button 
+          onClick={handleExportPDF} 
+          disabled={isExporting}
+          className="bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-red-900 transition-colors disabled:opacity-50 shadow-md border-2 border-transparent hover:border-white"
+        >
+          {isExporting ? 'Scribing PDF...' : 'Download PDF Sheet'}
+        </button>
+      </div>
+
+      <div ref={sheetRef} className="max-w-7xl mx-auto bg-white/90 border-4 border-black shadow-[0_0_50px_rgba(0,0,0,0.2)] p-6 relative overflow-hidden">
         
         {/* Watermark Layer */}
         <div 
@@ -216,7 +276,7 @@ export default function CharacterBuilder() {
 
             <div className="border-2 border-black p-2 bg-amber-50/80 shadow-sm">
               <h2 className="font-bold border-b border-black mb-1 uppercase text-[10px] flex justify-between font-black">
-                Step 2: Background <button onClick={() => setBackground(backgroundEvents[Math.floor(Math.random()*backgroundEvents.length)])} className="bg-black text-white px-1 text-[8px] hover:bg-red-900 transition-colors">Roll</button>
+                Step 2: Background <button onClick={() => setBackground(backgroundEvents[Math.floor(Math.random()*backgroundEvents.length)])} className="bg-black text-white px-1 text-[8px] hover:bg-red-900 transition-colors hidden-on-print">Roll</button>
               </h2>
               <p className="text-[10px] italic leading-tight min-h-[45px] flex items-center">{background}</p>
             </div>
@@ -292,10 +352,10 @@ export default function CharacterBuilder() {
                   <input className="text-[10px] border border-black/10 flex-1 p-1 bg-white/50" placeholder="Love / Hate..." value={p.target} 
                     onChange={e => { const n = [...passions]; n[idx].target = e.target.value; setPassions(n); }} />
                   <span className="text-[10px] font-black p-1 bg-white/50 border border-black/10 min-w-[35px] text-center">{characteristics.POW + characteristics.CHA}%</span>
-                  <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="text-red-600 hover:text-black transition-colors font-bold text-xs">×</button>
+                  <button onClick={() => setPassions(passions.filter(x => x.id !== p.id))} className="text-red-600 hover:text-black transition-colors font-bold text-xs hidden-on-print">×</button>
                 </div>
               ))}
-              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-1 uppercase hover:bg-purple-900 transition-colors shadow-sm">+ Add Passion</button>
+              <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] bg-black text-white w-full py-1 mt-1 uppercase hover:bg-purple-900 transition-colors shadow-sm hidden-on-print">+ Add Passion</button>
             </div>
           </section>
 
