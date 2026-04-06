@@ -91,6 +91,7 @@ export default function CharacterBuilder() {
   const [passions, setPassions] = useState([{ id: 1, target: "Melniboné", val: 0 }]);
   const [pacts, setPacts] = useState<Pact[]>([{ id: 1, entity: "", dedicatedPow: 0, gifts: "", compulsions: "" }]);
   const [skillSpends, setSkillSpends] = useState<Record<string, SkillSpend>>({});
+  const [skillSpecs, setSkillSpecs] = useState<Record<string, string>>({}); // Tracks inline specifications
   
   // Custom Skills
   const [customSkills, setCustomSkills] = useState<string[]>([]);
@@ -275,6 +276,10 @@ export default function CharacterBuilder() {
     return base + s.culture + s.career + s.bonus;
   };
 
+  const displaySkillName = (name: string) => {
+    return skillSpecs[name] ? `${name} (${skillSpecs[name]})` : name;
+  };
+
   // --- BUILDER UI (Interactive Component) ---
   const BuilderSkillRow = ({ skillName, base, type }: { skillName: string, base: number, type: string }) => {
     const s = skillSpends[skillName] || { culture: 0, career: 0, bonus: 0 };
@@ -285,10 +290,24 @@ export default function CharacterBuilder() {
     const canCulture = type === "standard" || cultureProfs.includes(skillName) || type === "style" || isCustom || isMagic;
     const canCareer = careerStandards.includes(skillName) || careerProfs.includes(skillName) || type === "style" || isCustom || isMagic;
 
+    // Determine if this exact skill needs an inline specification box
+    const exactNeedsSpec = ["Art", "Craft", "Language", "Lore", "Combat Style", "Rune Casting", "Summoning Ritual", "Command", "Pact"].includes(skillName);
+
     return (
       <tr className="border-b text-[10px]" style={{ borderColor: '#d1d5db', backgroundColor: overCap ? '#fee2e2' : 'transparent' }}>
         <td className="p-1 font-bold flex justify-between items-center" style={{ color: overCap ? '#dc2626' : '#000000' }}>
-          <span>{skillName}</span>
+          <span className="flex items-center">
+            {skillName}
+            {exactNeedsSpec && (
+              <input 
+                className="ml-1 px-1 w-24 text-[9px] font-normal italic bg-transparent border-b outline-none" 
+                style={{ borderColor: '#9ca3af', color: '#1d4ed8' }}
+                placeholder="(specify...)" 
+                value={skillSpecs[skillName] || ""} 
+                onChange={e => setSkillSpecs({...skillSpecs, [skillName]: e.target.value})}
+              />
+            )}
+          </span>
           {isCustom && <button onClick={() => removeCustomSkill(skillName)} className="font-bold px-1 ml-2 opacity-50 hover:opacity-100" style={{ color: '#ef4444' }} title="Remove Added Skill">×</button>}
         </td>
         <td className="text-center" style={{ color: '#6b7280' }}>{base}</td>
@@ -428,7 +447,7 @@ export default function CharacterBuilder() {
                 <button onClick={() => setPassions([...passions, {id: Date.now(), target: "", val: 0}])} className="text-[8px] w-full py-1 mt-1 uppercase" style={{ backgroundColor: '#000000', color: '#ffffff', cursor: 'pointer' }}>+ Add Passion</button>
               </div>
 
-              {/* NEW: PACTS SECTION */}
+              {/* PACTS SECTION */}
               <div className="border-2 p-2" style={{ borderColor: '#000000', backgroundColor: '#fdf2f8' }}>
                 <h2 className="font-bold border-b mb-2 uppercase text-[10px] font-black" style={{ borderColor: '#000000', color: '#831843' }}>Pacts & Dedications</h2>
                 {pacts.map((p, idx) => (
@@ -663,7 +682,7 @@ export default function CharacterBuilder() {
                       {mundaneProfSkills.length === 0 && <tr><td style={{ fontStyle: 'italic', padding: '2px 0' }}>None Learned</td></tr>}
                       {mundaneProfSkills.map(k => (
                         <tr key={k}>
-                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{k}</td>
+                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{displaySkillName(k)}</td>
                           <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getProfSkillBase(k, characteristics))}%</td>
                         </tr>
                       ))}
@@ -676,7 +695,7 @@ export default function CharacterBuilder() {
                       {magicProfSkills.length === 0 && <tr><td style={{ fontStyle: 'italic', padding: '2px 0' }}>None Learned</td></tr>}
                       {magicProfSkills.map(k => (
                         <tr key={k}>
-                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{k}</td>
+                          <td style={{ padding: '2px 0', borderBottom: '1px dotted #000000' }}>{displaySkillName(k)}</td>
                           <td style={{ padding: '2px 0', textAlign: 'right', fontWeight: 'bold', fontSize: '14px', borderBottom: '1px dotted #000000' }}>{getTotalSkill(k, getProfSkillBase(k, characteristics))}%</td>
                         </tr>
                       ))}
